@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Martins Imóveis — Finanças</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar-overlay" id="sidebar-overlay" hidden></div>
+    <div class="app">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-label="Martins Imóveis">
+            <img src="Logo-symbol.png" alt="Martins Imóveis" />
+          </span>
+          <button class="sidebar-close" id="sidebar-close" type="button" aria-label="Fechar menu">✕</button>
+        </div>
+
+        <nav class="nav">
+          <p class="nav-label">Visão geral</p>
+          <button class="nav-item active" data-view="dashboard">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" fill="currentColor"/></svg>
+            </span>
+            Painel
+          </button>
+          <button class="nav-item" data-view="transactions">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M8 7h13M8 12h13M8 17h13M3 7h.01M3 12h.01M3 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </span>
+            Transações
+            <span class="nav-badge" id="tx-count-badge">0</span>
+          </button>
+          <button class="nav-item" data-view="accounts">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>
+            </span>
+            Bancos
+          </button>
+          <button class="nav-item" data-view="goals">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+            </span>
+            Metas
+          </button>
+
+          <p class="nav-label">Obras</p>
+          <button class="nav-item" data-view="obras">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            Obras
+            <span class="nav-badge purple" id="obras-count-badge">0</span>
+          </button>
+          <div class="obras-nav-list" id="obras-nav-list"></div>
+
+          <p class="nav-label">Equipe</p>
+          <button class="nav-item" data-view="funcionarios">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            Funcionários
+            <span class="nav-badge purple" id="funcionarios-count-badge">0</span>
+          </button>
+
+          <p class="nav-label">Análises</p>
+          <button class="nav-item" data-view="reports">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </span>
+            Relatórios
+          </button>
+          <button class="nav-item" data-view="categories">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M4 7h7v7H4V7Zm9-3h7v7h-7V4ZM4 16h7v4H4v-4Zm9-2h7v6h-7v-6Z" stroke="currentColor" stroke-width="1.6"/></svg>
+            </span>
+            Categorias
+          </button>
+          <button class="nav-item" data-view="insights">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M3 12h3M18 12h3M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.6"/></svg>
+            </span>
+            Insights
+            <span class="nav-badge purple" id="insight-badge">0</span>
+          </button>
+
+          <p class="nav-label">Operações</p>
+          <button class="nav-item" data-view="budgets">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </span>
+            Orçamentos
+          </button>
+          <button class="nav-item" data-view="recurring">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.5-5.8L20 4v6h-6l2.2-2.2A6 6 0 1 0 18 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            Recorrentes
+          </button>
+          <button class="nav-item" data-view="settings">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.7.9 1.2 1.6 1.3H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" stroke="currentColor" stroke-width="1.4"/></svg>
+            </span>
+            Configurações
+          </button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            <div>
+              <h1 id="greeting">Bom dia, Tiago</h1>
+              <p class="subtitle" id="today-line">Terça, 15 de setembro de 2026 — Controle pessoal</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span class="live-pill">
+              <span class="live-dot"></span>
+              Saldo ao vivo
+            </span>
+            <button class="income-btn" id="open-income-modal" type="button">Receita</button>
+            <button class="expense-btn" id="open-expense-modal" type="button">Despesa</button>
+            <span class="top-logo" aria-label="Martins Imóveis">
+              <img src="Logo-symbol.png" alt="Martins Imóveis" />
+            </span>
+          </div>
+        </header>
+
+        <div class="main-filters" id="main-filters">
+          <label class="main-filter">
+            <span>Tipo</span>
+            <select id="main-type">
+              <option value="all">Receita e Despesa</option>
+              <option value="income">Receita</option>
+              <option value="expense">Despesa</option>
+            </select>
+          </label>
+          <label class="main-filter">
+            <span>Categoria</span>
+            <select id="main-category">
+              <option value="all">Todas as categorias</option>
+            </select>
+          </label>
+        </div>
+
+        <section class="view" id="view-dashboard">
+          <div class="kpi-grid">
+            <article class="kpi-card">
+              <div class="kpi-head">
+                <span class="kpi-icon green">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v18M7 8h7.5a3.5 3.5 0 0 1 0 7H7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <span>Saldo geral</span>
+              </div>
+              <strong class="kpi-value" id="kpi-balance">R$ 0,00</strong>
+              <div class="kpi-foot up" id="kpi-balance-delta">
+                <span>▲ 0% vs mês anterior</span>
+                <span class="spark green" aria-hidden="true"></span>
+              </div>
+            </article>
+            <article class="kpi-card">
+              <div class="kpi-head">
+                <span class="kpi-icon peach">
+                  <svg viewBox="0 0 24 24"><path d="M4 17 9 12l4 4 7-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span>Receitas do mês</span>
+              </div>
+              <strong class="kpi-value amount income" id="kpi-income">R$ 0,00</strong>
+              <div class="kpi-foot up" id="kpi-income-delta">
+                <span>▲ 0% este mês</span>
+                <span class="spark peach" aria-hidden="true"></span>
+              </div>
+            </article>
+            <article class="kpi-card">
+              <div class="kpi-head">
+                <span class="kpi-icon orange">
+                  <svg viewBox="0 0 24 24"><path d="M12 8v5l3 2M12 21a9 9 0 1 0-9-9 9 9 0 0 0 9 9Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <span>Despesas do mês</span>
+              </div>
+              <strong class="kpi-value amount expense" id="kpi-expense">R$ 0,00</strong>
+              <div class="kpi-foot warn" id="kpi-expense-delta">
+                <span>▲ 0 lançamentos hoje</span>
+                <span class="spark orange" aria-hidden="true"></span>
+              </div>
+            </article>
+            <article class="kpi-card kpi-result">
+              <div class="kpi-head">
+                <span class="kpi-icon green">
+                  <svg viewBox="0 0 24 24"><path d="M3 12h18M12 3v18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <span>Resultado do mês</span>
+              </div>
+              <strong class="kpi-value" id="kpi-result">R$ 0,00</strong>
+              <div class="kpi-foot" id="kpi-result-delta">
+                <span>Receitas − despesas</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="dash-obras-strip" id="dash-obras-strip"></div>
+
+          <div class="mid-grid">
+            <article class="panel chart-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Movimentação semanal</h2>
+                  <p>Receitas vs despesas desta semana</p>
+                </div>
+              </div>
+              <div class="bar-chart" id="weekly-chart"></div>
+              <div class="legend">
+                <span><i class="swatch hatch"></i> Despesas</span>
+                <span><i class="swatch blue"></i> Receitas</span>
+              </div>
+            </article>
+
+            <article class="panel donut-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Mix de categorias</h2>
+                  <p>Despesas do filtro atual</p>
+                </div>
+              </div>
+              <div class="donut-wrap">
+                <canvas id="donut" width="220" height="220"></canvas>
+                <div class="donut-center">
+                  <strong id="donut-total">0</strong>
+                  <span>lançamentos</span>
+                </div>
+              </div>
+              <div class="donut-legend" id="donut-legend"></div>
+              <div class="insight-note">
+                Acompanhe para onde o dinheiro está indo e ajuste o orçamento nas categorias que mais pesam.
+              </div>
+            </article>
+          </div>
+
+          <div class="bottom-grid">
+            <article class="panel trend-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Fluxo de caixa — 30 dias</h2>
+                  <p>Saldo acumulado no período</p>
+                </div>
+                <div class="range-pills" id="trend-range">
+                  <button data-days="7">7D</button>
+                  <button class="on" data-days="30">30D</button>
+                  <button data-days="90">90D</button>
+                </div>
+              </div>
+              <canvas id="trend" height="90"></canvas>
+            </article>
+
+            <article class="panel queue-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Consulta de lançamentos</h2>
+                  <p>Filtre por período, tipo e categoria</p>
+                </div>
+              </div>
+              <form class="filters" id="dash-filters">
+                <input type="search" id="dash-search" placeholder="Buscar descrição..." />
+                <input type="date" id="dash-from" />
+                <input type="date" id="dash-to" />
+                <button type="button" class="ghost-btn" id="dash-clear">Limpar</button>
+              </form>
+              <ul class="tx-queue" id="dash-queue"></ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="view hidden" id="view-transactions">
+          <article class="panel full">
+            <div class="panel-head">
+              <div>
+                <h2>Transações</h2>
+                <p>Consulte, filtre e gerencie todos os lançamentos</p>
+              </div>
+            </div>
+            <form class="filters dense" id="tx-filters">
+              <input type="search" id="tx-search" placeholder="Buscar por descrição, banco ou categoria..." />
+              <select id="tx-type">
+                <option value="all">Tipo</option>
+                <option value="income">Receita</option>
+                <option value="expense">Despesa</option>
+              </select>
+              <select id="tx-category"></select>
+              <select id="tx-account"></select>
+              <input type="date" id="tx-from" />
+              <input type="date" id="tx-to" />
+              <button type="button" class="ghost-btn" id="tx-clear">Limpar filtro</button>
+            </form>
+
+            <div class="tx-groups" id="tx-groups">
+              <section class="tx-group income-group">
+                <div class="tx-group-head">
+                  <h3>Receitas</h3>
+                  <span class="muted">Honorários Mensais · Serviços Diversos</span>
+                </div>
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Banco</th>
+                        <th class="num">Valor</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="tx-table-income"></tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="tx-group expense-group">
+                <div class="tx-group-head">
+                  <h3>Despesas</h3>
+                  <span class="muted">Folha · Água · Luz · Manutenção · Ferramentas · Combustível · Locação · Aluguel · Internet · Seguros · IPVA/IPTU · Imposto · Outros</span>
+                </div>
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Banco</th>
+                        <th class="num">Valor</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="tx-table-expense"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+            <p class="table-summary" id="tx-summary"></p>
+          </article>
+        </section>
+
+        <section class="view hidden" id="view-accounts">
+          <div class="cards-3" id="accounts-grid"></div>
+        </section>
+
+        <section class="view hidden" id="view-goals">
+          <div class="cards-2" id="goals-grid"></div>
+        </section>
+
+        <section class="view hidden" id="view-reports">
+          <article class="panel full">
+            <div class="panel-head">
+              <div>
+                <h2>Relatório filtrado</h2>
+                <p>Use o filtro superior de tipo/categoria e o período abaixo</p>
+              </div>
+            </div>
+            <form class="filters" id="report-filters">
+              <input type="date" id="report-from" />
+              <input type="date" id="report-to" />
+              <button type="button" class="ghost-btn" id="report-clear">Limpar período</button>
+            </form>
+            <div class="report-kpis" id="report-kpis"></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Categoria</th>
+                    <th class="num">Receitas</th>
+                    <th class="num">Despesas</th>
+                    <th class="num">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody id="report-table"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="view hidden" id="view-categories">
+          <div class="cards-3" id="categories-grid"></div>
+        </section>
+
+        <section class="view hidden" id="view-insights">
+          <div class="cards-2" id="insights-grid"></div>
+        </section>
+
+        <section class="view hidden" id="view-budgets">
+          <div class="stack" id="budgets-grid"></div>
+        </section>
+
+        <section class="view hidden" id="view-recurring">
+          <article class="panel full">
+            <h2>Lançamentos recorrentes</h2>
+            <p class="muted">Contas e assinaturas que se repetem todo mês.</p>
+            <ul class="simple-list" id="recurring-list"></ul>
+          </article>
+        </section>
+
+        <section class="view hidden" id="view-settings">
+          <article class="panel full settings-panel">
+            <h2>Configurações</h2>
+            <label>
+              Nome de exibição
+              <input type="text" id="setting-name" maxlength="40" />
+            </label>
+            <label>
+              Moeda
+              <select id="setting-currency">
+                <option value="BRL">Real (BRL)</option>
+                <option value="USD">Dólar (USD)</option>
+                <option value="EUR">Euro (EUR)</option>
+              </select>
+            </label>
+            <div class="settings-actions">
+              <button class="primary-btn" id="save-settings">Salvar</button>
+              <button class="danger-btn" id="reset-data">Zerar todos os lançamentos</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="view hidden" id="view-obras">
+          <article class="panel full obras-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Obras</h2>
+                <p>Escolha uma obra abaixo para ver os dados e o financeiro dela</p>
+              </div>
+              <button class="primary-btn" id="open-obra-modal" type="button">Nova obra</button>
+            </div>
+
+            <div class="obras-layout">
+              <div class="obras-list-wrap">
+                <p class="obras-section-label">Suas obras</p>
+                <div class="obras-tabs" id="obras-tabs"></div>
+              </div>
+              <div class="obras-content" id="obras-content"></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="view hidden" id="view-funcionarios">
+          <article class="panel full funcionarios-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Funcionários</h2>
+                <p>Cadastre e acompanhe a equipe das obras</p>
+              </div>
+              <button class="primary-btn" id="open-funcionario-modal" type="button">Novo funcionário</button>
+            </div>
+            <label class="funcionario-role-filter">
+              <span>Filtrar por cargo / função</span>
+              <select id="funcionario-role-filter">
+                <option value="all">Todos os cargos</option>
+                <option value="Pedreiro">Pedreiro</option>
+                <option value="Ajudante">Ajudante</option>
+                <option value="Azulejista">Azulejista</option>
+                <option value="Pedreiro meia colher">Pedreiro meia colher</option>
+                <option value="Eletricista">Eletricista</option>
+                <option value="Encanador">Encanador</option>
+                <option value="Marceneiro">Marceneiro</option>
+                <option value="Amarrador">Amarrador</option>
+              </select>
+            </label>
+            <div class="funcionarios-grid" id="funcionarios-grid"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <dialog class="modal" id="tx-modal">
+    <form method="dialog" id="tx-form">
+      <h2 id="modal-title">Nova transação</h2>
+      <input type="hidden" id="tx-id" />
+      <input type="hidden" id="f-obra-id" />
+      <p class="obra-tx-hint muted hidden" id="obra-tx-hint"></p>
+      <label>
+        Descrição
+        <input type="text" id="f-desc" required maxlength="80" placeholder="Ex.: Supermercado Extra" />
+      </label>
+      <div class="form-row">
+        <label>
+          Tipo
+          <select id="f-type" required>
+            <option value="expense">Despesa</option>
+            <option value="income">Receita</option>
+          </select>
+        </label>
+        <label>
+          Valor
+          <input type="number" id="f-amount" required min="0.01" step="0.01" placeholder="0,00" />
+        </label>
+      </div>
+      <div class="form-row">
+        <label>
+          Categoria
+          <select id="f-category" required></select>
+        </label>
+        <label>
+        Banco
+        <select id="f-account" required></select>
+        </label>
+      </div>
+      <label>
+        Data
+        <input type="date" id="f-date" required />
+      </label>
+      <label id="f-etapa-wrap" class="hidden">
+        Etapa da obra
+        <select id="f-etapa"></select>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="cancel-tx">Cancelar</button>
+        <button type="submit" class="primary-btn">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="obra-modal">
+    <form method="dialog" id="obra-form">
+      <h2 id="obra-modal-title">Nova aba de obra</h2>
+      <input type="hidden" id="obra-id" />
+      <label>
+        Nome da obra
+        <input type="text" id="obra-name" required maxlength="60" placeholder="Ex.: Residencial Jardins" />
+      </label>
+      <label>
+        Local / endereço
+        <input type="text" id="obra-location" maxlength="80" placeholder="Ex.: Rua das Flores, 120" />
+      </label>
+      <label>
+        Status
+        <select id="obra-status">
+          <option value="planejamento">Planejamento</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="concluida">Concluída</option>
+          <option value="pausada">Pausada</option>
+        </select>
+      </label>
+      <label id="obra-etapa-wrap" class="hidden">
+        Etapa da obra
+        <select id="obra-etapa"></select>
+      </label>
+      <label>
+        Observações
+        <textarea id="obra-notes" rows="3" maxlength="240" placeholder="Detalhes da obra..."></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="cancel-obra">Cancelar</button>
+        <button type="submit" class="primary-btn">Salvar obra</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="funcionario-modal">
+    <form method="dialog" id="funcionario-form">
+      <h2 id="funcionario-modal-title">Novo funcionário</h2>
+      <input type="hidden" id="funcionario-id" />
+      <label>
+        Nome completo
+        <input type="text" id="funcionario-name" required maxlength="80" placeholder="Ex.: João da Silva" />
+      </label>
+      <div class="form-row">
+        <label>
+          Cargo / função
+          <select id="funcionario-role" required>
+            <option value="">Selecione o cargo</option>
+            <option value="Pedreiro">Pedreiro</option>
+            <option value="Ajudante">Ajudante</option>
+            <option value="Azulejista">Azulejista</option>
+            <option value="Pedreiro meia colher">Pedreiro meia colher</option>
+            <option value="Eletricista">Eletricista</option>
+            <option value="Encanador">Encanador</option>
+            <option value="Marceneiro">Marceneiro</option>
+            <option value="Amarrador">Amarrador</option>
+          </select>
+        </label>
+        <label>
+          Telefone
+          <input type="text" id="funcionario-phone" maxlength="20" placeholder="Ex.: (11) 99999-0000" />
+        </label>
+      </div>
+      <div class="form-row">
+        <label>
+          Salário / diária (R$)
+          <input type="number" id="funcionario-salary" min="0" step="0.01" placeholder="0,00" />
+        </label>
+        <label>
+          Situação
+          <select id="funcionario-status">
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </label>
+      </div>
+      <label>
+        Obra atual
+        <select id="funcionario-obra">
+          <option value="all">Sem obra</option>
+        </select>
+      </label>
+      <label>
+        Observações
+        <textarea id="funcionario-notes" rows="3" maxlength="240" placeholder="Observações sobre o funcionário..."></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="cancel-funcionario">Cancelar</button>
+        <button type="submit" class="primary-btn">Salvar funcionário</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal modal-wide" id="funcionario-dias-modal">
+    <form method="dialog" id="funcionario-dias-form" onsubmit="return false;">
+      <h2 id="funcionario-dias-title">Controle diário</h2>
+      <input type="hidden" id="funcionario-dias-id" />
+      <p class="muted funcionario-dias-help">Registre em qual obra o funcionário trabalhou em cada dia.</p>
+      <label>
+        Data
+        <input type="date" id="funcionario-dias-date" required />
+      </label>
+      <label>
+        Obra do dia
+        <select id="funcionario-dias-obra"></select>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="primary-btn" id="funcionario-dias-save">Salvar dia</button>
+      </div>
+      <div class="funcionario-dias-modal-list-wrap">
+        <p class="obras-section-label">Histórico registrado</p>
+        <ul class="funcionario-dias-modal-list" id="funcionario-dias-list"></ul>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="cancel-funcionario-dias">Fechar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
