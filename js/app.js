@@ -80,12 +80,15 @@ const FUNCIONARIO_CARGOS = [
   "Amarrador"
 ];
 
+const DEFAULT_LOGIN_USER = "Tiago";
+const DEFAULT_LOGIN_PASS = "Carlos27";
+
 const state = {
   settings: {
     name: "Tiago",
     currency: "BRL",
-    loginUser: "Tiago",
-    loginPass: "Carlos27"
+    loginUser: DEFAULT_LOGIN_USER,
+    loginPass: DEFAULT_LOGIN_PASS
   },
   transactions: [],
   obras: [],
@@ -123,17 +126,13 @@ function getStatePayload() {
 
 function applyStatePayload(parsed) {
   if (!parsed || typeof parsed !== "object") return;
+  const incoming = parsed.settings && typeof parsed.settings === "object" ? parsed.settings : {};
   state.settings = {
-    name: "Tiago",
-    currency: "BRL",
-    loginUser: "Tiago",
-    loginPass: "Carlos27",
-    ...parsed.settings
+    name: incoming.name || "Tiago",
+    currency: incoming.currency || "BRL",
+    loginUser: DEFAULT_LOGIN_USER,
+    loginPass: DEFAULT_LOGIN_PASS
   };
-  state.settings.loginUser = "Tiago";
-  if (!state.settings.loginPass || state.settings.loginPass === "martins123") {
-    state.settings.loginPass = "Carlos27";
-  }
   state.transactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
   state.obras = Array.isArray(parsed.obras) ? parsed.obras : [];
   state.funcionarios = Array.isArray(parsed.funcionarios) ? parsed.funcionarios : [];
@@ -2088,15 +2087,21 @@ function bind() {
 load();
 bind();
 
-async function boot() {
+async function syncCloudAfterAuth() {
   try {
     await loadCloud();
+    if (state.authenticated) refresh();
   } catch (err) {
     console.warn(err);
     setCloudStatus("Nuvem: indisponível no momento");
   }
+}
+
+async function boot() {
+  // Mostra login primeiro; nuvem só depois do acesso (evita senha da nuvem travar o login)
   if (sessionStorage.getItem("financas-auth") === "1") {
     unlockApp();
+    await syncCloudAfterAuth();
   } else {
     lockApp();
   }
@@ -2130,13 +2135,18 @@ function unlockApp() {
 function tryLogin() {
   const user = (document.getElementById("login-user")?.value || "").trim();
   const pass = document.getElementById("login-pass")?.value || "";
-  const expectedUser = state.settings.loginUser || "Tiago";
-  const expectedPass = state.settings.loginPass || "Carlos27";
+  const expectedUser = (state.settings.loginUser || DEFAULT_LOGIN_USER).trim();
+  const expectedPass = state.settings.loginPass || DEFAULT_LOGIN_PASS;
+  const userOk =
+    user.toLowerCase() === expectedUser.toLowerCase() ||
+    user.toLowerCase() === DEFAULT_LOGIN_USER.toLowerCase();
+  const passOk = pass === expectedPass || pass === DEFAULT_LOGIN_PASS;
   const error = document.getElementById("login-error");
-  if (user === expectedUser && pass === expectedPass) {
+  if (userOk && passOk) {
     error?.classList.add("hidden");
     unlockApp();
     showToast(`Bem-vindo, ${state.settings.name}`);
+    syncCloudAfterAuth();
     return;
   }
   error?.classList.remove("hidden");
