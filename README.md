@@ -4,7 +4,8 @@ Site de finanças da Martins Imóveis com backup na nuvem via Supabase.
 
 ## Site online
 
-https://carlosaugustoms04-alt.github.io/Controle-Tiago/
+- Vercel: https://controle-tiago.vercel.app/
+- GitHub Pages: https://carlosaugustoms04-alt.github.io/Controle-Tiago/
 
 ## Desenvolvimento local
 

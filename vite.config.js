@@ -1,9 +1,11 @@
 import { defineConfig } from "vite";
 
-export default defineConfig(({ command }) => ({
-  // Em produção (GitHub Pages) usa o subpath do repositório.
-  // Em desenvolvimento local fica na raiz: http://127.0.0.1:5173/
-  base: command === "build" ? "/Controle-Tiago/" : "/",
+// Vercel / local: "/"
+// GitHub Pages: defina VITE_BASE=/Controle-Tiago/ no workflow
+const base = process.env.VITE_BASE || "/";
+
+export default defineConfig({
+  base,
   root: ".",
   publicDir: "public",
   server: {
@@ -14,10 +16,10 @@ export default defineConfig(({ command }) => ({
   preview: {
     port: 4173,
     host: "127.0.0.1",
-    open: "/Controle-Tiago/"
+    open: base
   },
   build: {
     outDir: "dist",
     emptyOutDir: true
   }
-}));
+});
