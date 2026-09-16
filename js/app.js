@@ -2,7 +2,7 @@ import { getSupabaseClient, getSupabaseProjectHost } from "./supabase-client.js"
 
 const STORAGE_KEY = "financas-dashboard-v5";
 
-const EXPENSE_CATEGORIES = [
+const DEFAULT_EXPENSE_CATEGORIES = [
   { id: "payroll", name: "Folha de pagamento", color: "#c9a978" },
   { id: "water", name: "Água", color: "#8aa3ff" },
   { id: "electric", name: "Luz", color: "#d4b48a" },
@@ -19,12 +19,26 @@ const EXPENSE_CATEGORIES = [
   { id: "other_expense", name: "Outros", color: "#7d8ba0" }
 ];
 
-const INCOME_CATEGORIES = [
+const DEFAULT_INCOME_CATEGORIES = [
   { id: "monthly_fees", name: "Honorários Mensais", color: "#c9a978" },
   { id: "diverse_services", name: "Serviços Diversos", color: "#b8956a" }
 ];
 
-const CATEGORIES = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
+const DEFAULT_FUNCIONARIO_CARGOS = [
+  "Pedreiro",
+  "Ajudante",
+  "Azulejista",
+  "Pedreiro meia colher",
+  "Eletricista",
+  "Encanador",
+  "Marceneiro",
+  "Amarrador"
+];
+
+const CATEGORY_COLOR_PALETTE = [
+  "#c9a978", "#8aa3ff", "#d4b48a", "#b8956a", "#a68954",
+  "#d4a574", "#b08a5c", "#7d9bc4", "#c97878", "#7d8ba0", "#9a7a52"
+];
 
 const ACCOUNTS = [
   { id: "sicoob", name: "Sicoob", type: "Banco" },
@@ -69,17 +83,6 @@ const OBRA_ETAPAS = [
   { id: "pintura", name: "Pintura" }
 ];
 
-const FUNCIONARIO_CARGOS = [
-  "Pedreiro",
-  "Ajudante",
-  "Azulejista",
-  "Pedreiro meia colher",
-  "Eletricista",
-  "Encanador",
-  "Marceneiro",
-  "Amarrador"
-];
-
 const DEFAULT_LOGIN_USER = "Tiago";
 const DEFAULT_LOGIN_PASS = "Carlos27";
 
@@ -90,12 +93,16 @@ const state = {
     loginUser: DEFAULT_LOGIN_USER,
     loginPass: DEFAULT_LOGIN_PASS
   },
+  expenseCategories: structuredClone(DEFAULT_EXPENSE_CATEGORIES),
+  incomeCategories: structuredClone(DEFAULT_INCOME_CATEGORIES),
+  funcionarioCargos: [...DEFAULT_FUNCIONARIO_CARGOS],
   transactions: [],
   obras: [],
   funcionarios: [],
   activeObraId: null,
   obraEtapaFilter: "all",
   funcionarioRoleFilter: "all",
+  pontoDate: null,
   trendDays: 30,
   authenticated: false
 };
@@ -117,11 +124,35 @@ function addDays(date, days) {
 function getStatePayload() {
   return {
     settings: state.settings,
+    expenseCategories: state.expenseCategories,
+    incomeCategories: state.incomeCategories,
+    funcionarioCargos: state.funcionarioCargos,
     transactions: state.transactions,
     obras: state.obras,
     funcionarios: state.funcionarios,
     activeObraId: state.activeObraId
   };
+}
+
+function normalizeCategoryList(list, fallback) {
+  if (!Array.isArray(list) || !list.length) return structuredClone(fallback);
+  return list
+    .filter((item) => item && item.id && item.name)
+    .map((item) => ({
+      id: String(item.id),
+      name: String(item.name),
+      color: item.color || "#c9a978"
+    }));
+}
+
+function normalizeCargoList(list) {
+  if (!Array.isArray(list) || !list.length) return [...DEFAULT_FUNCIONARIO_CARGOS];
+  const unique = [];
+  list.forEach((item) => {
+    const name = String(item || "").trim();
+    if (name && !unique.includes(name)) unique.push(name);
+  });
+  return unique.length ? unique : [...DEFAULT_FUNCIONARIO_CARGOS];
 }
 
 function applyStatePayload(parsed) {
@@ -133,10 +164,64 @@ function applyStatePayload(parsed) {
     loginUser: DEFAULT_LOGIN_USER,
     loginPass: DEFAULT_LOGIN_PASS
   };
+  state.expenseCategories = normalizeCategoryList(parsed.expenseCategories, DEFAULT_EXPENSE_CATEGORIES);
+  state.incomeCategories = normalizeCategoryList(parsed.incomeCategories, DEFAULT_INCOME_CATEGORIES);
+  state.funcionarioCargos = normalizeCargoList(parsed.funcionarioCargos);
   state.transactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
   state.obras = Array.isArray(parsed.obras) ? parsed.obras : [];
   state.funcionarios = Array.isArray(parsed.funcionarios) ? parsed.funcionarios : [];
   state.activeObraId = parsed.activeObraId || state.obras[0]?.id || null;
+  if (!state.pontoDate) state.pontoDate = todayISO();
+}
+
+function getExpenseCategories() {
+  if (!Array.isArray(state.expenseCategories) || !state.expenseCategories.length) {
+    state.expenseCategories = structuredClone(DEFAULT_EXPENSE_CATEGORIES);
+  }
+  return state.expenseCategories;
+}
+
+function getIncomeCategories() {
+  if (!Array.isArray(state.incomeCategories) || !state.incomeCategories.length) {
+    state.incomeCategories = structuredClone(DEFAULT_INCOME_CATEGORIES);
+  }
+  return state.incomeCategories;
+}
+
+function getAllCategories() {
+  return [...getExpenseCategories(), ...getIncomeCategories()];
+}
+
+function getFuncionarioCargos() {
+  if (!Array.isArray(state.funcionarioCargos) || !state.funcionarioCargos.length) {
+    state.funcionarioCargos = [...DEFAULT_FUNCIONARIO_CARGOS];
+  }
+  return state.funcionarioCargos;
+}
+
+function slugifyId(name) {
+  const base = String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+  return base || `item_${Date.now()}`;
+}
+
+function nextCategoryColor(list) {
+  return CATEGORY_COLOR_PALETTE[list.length % CATEGORY_COLOR_PALETTE.length];
+}
+
+function uniqueCategoryId(name, existing) {
+  let id = slugifyId(name);
+  let n = 2;
+  const ids = new Set(existing.map((c) => c.id));
+  while (ids.has(id)) {
+    id = `${slugifyId(name)}_${n}`;
+    n += 1;
+  }
+  return id;
 }
 
 function load() {
@@ -308,17 +393,19 @@ function currency(value) {
 }
 
 function categoryById(id) {
-  return CATEGORIES.find((c) => c.id === id) || CATEGORIES.at(-1);
+  const all = getAllCategories();
+  return all.find((c) => c.id === id) || all.at(-1);
 }
 
 function categoriesForType(type) {
-  if (type === "income") return INCOME_CATEGORIES;
-  if (type === "expense") return EXPENSE_CATEGORIES;
-  return CATEGORIES;
+  if (type === "income") return getIncomeCategories();
+  if (type === "expense") return getExpenseCategories();
+  return getAllCategories();
 }
 
 function defaultCategoryForType(type) {
-  return type === "income" ? "monthly_fees" : "payroll";
+  const list = categoriesForType(type);
+  return list[0]?.id || "";
 }
 
 function fillSelect(select, items, withAllLabel, grouped = false) {
@@ -335,21 +422,21 @@ function fillSelect(select, items, withAllLabel, grouped = false) {
   const appendItems = (list, parent) => {
     list.forEach((item) => {
       const opt = document.createElement("option");
-      opt.value = item.id;
-      opt.textContent = item.name;
+      opt.value = item.id ?? item;
+      opt.textContent = item.name ?? item;
       parent.appendChild(opt);
     });
   };
 
-  if (grouped && items === CATEGORIES) {
+  if (grouped) {
     const incomeGroup = document.createElement("optgroup");
     incomeGroup.label = "Receitas";
-    appendItems(INCOME_CATEGORIES, incomeGroup);
+    appendItems(getIncomeCategories(), incomeGroup);
     select.appendChild(incomeGroup);
 
     const expenseGroup = document.createElement("optgroup");
     expenseGroup.label = "Despesas";
-    appendItems(EXPENSE_CATEGORIES, expenseGroup);
+    appendItems(getExpenseCategories(), expenseGroup);
     select.appendChild(expenseGroup);
   } else {
     appendItems(items, select);
@@ -357,7 +444,7 @@ function fillSelect(select, items, withAllLabel, grouped = false) {
 
   if ([...select.options].some((o) => o.value === current)) select.value = current;
   else if (withAllLabel) select.value = "all";
-  else if (items[0]) select.value = items[0].id;
+  else if (items?.[0]) select.value = items[0].id ?? items[0];
 }
 
 function syncCategorySelect(selectId, type, withAllLabel) {
@@ -787,7 +874,7 @@ function renderReports() {
     <article><span>Despesas</span><strong class="amount expense">${currency(expense)}</strong></article>
     <article><span>Resultado</span><strong>${currency(income - expense)}</strong></article>
   `;
-  const rows = CATEGORIES.map((cat) => {
+  const rows = getAllCategories().map((cat) => {
     const group = list.filter((tx) => tx.category === cat.id);
     if (!group.length) return "";
     const inc = sumBy(group, "income");
@@ -804,7 +891,7 @@ function renderReports() {
 
 function renderCategories() {
   const month = filteredByMain(currentMonthTx());
-  document.getElementById("categories-grid").innerHTML = CATEGORIES.map((cat) => {
+  document.getElementById("categories-grid").innerHTML = getAllCategories().map((cat) => {
     const list = month.filter((tx) => tx.category === cat.id);
     const expense = sumBy(list, "expense");
     const income = sumBy(list, "income");
@@ -823,7 +910,7 @@ function renderInsights() {
   const month = filteredByMain(currentMonthTx());
   const expense = sumBy(month, "expense");
   const income = sumBy(month, "income");
-  const top = CATEGORIES
+  const top = getAllCategories()
     .map((cat) => ({ cat, total: sumBy(month.filter((tx) => tx.category === cat.id), "expense") }))
     .sort((a, b) => b.total - a.total)[0];
   const saving = income - expense;
@@ -919,10 +1006,23 @@ function assignFuncionarioToObra(funcionarioId, obraId) {
   showToast(obraId ? "Funcionário adicionado à obra" : "Funcionário removido da obra");
 }
 
-function upsertObraDia(historico, date, obraId) {
+function upsertObraDia(historico, date, obraId, status = null) {
   const list = Array.isArray(historico) ? [...historico] : [];
   const idx = list.findIndex((item) => item.date === date);
-  const entry = { id: idx >= 0 ? list[idx].id : uid(), date, obraId: obraId || null };
+  let resolvedStatus = status;
+  if (!resolvedStatus) {
+    if (obraId) resolvedStatus = "presente";
+    else resolvedStatus = "folga";
+  }
+  if (resolvedStatus === "falta" || resolvedStatus === "folga") {
+    obraId = null;
+  }
+  const entry = {
+    id: idx >= 0 ? list[idx].id : uid(),
+    date,
+    obraId: obraId || null,
+    status: resolvedStatus
+  };
   if (idx >= 0) list[idx] = entry;
   else list.push(entry);
   return list.sort((a, b) => b.date.localeCompare(a.date));
@@ -933,15 +1033,72 @@ function formatShortDate(iso) {
   return iso.split("-").reverse().join("/");
 }
 
-function obraDiaLabel(obraId) {
-  if (!obraId) return "Sem obra / folga";
-  const obra = obraById(obraId);
+function normalizePontoStatus(dia) {
+  if (!dia) return "folga";
+  if (dia.status === "presente" || dia.status === "falta" || dia.status === "folga") return dia.status;
+  return dia.obraId ? "presente" : "folga";
+}
+
+function pontoStatusLabel(status) {
+  if (status === "presente") return "Presente";
+  if (status === "falta") return "Falta";
+  return "Folga";
+}
+
+function obraDiaLabel(diaOrObraId) {
+  if (diaOrObraId && typeof diaOrObraId === "object") {
+    const status = normalizePontoStatus(diaOrObraId);
+    if (status === "falta") return "Falta";
+    if (status === "folga") return "Folga";
+    const obra = diaOrObraId.obraId ? obraById(diaOrObraId.obraId) : null;
+    return obra ? `Presente · ${obra.name}` : "Presente";
+  }
+  if (!diaOrObraId) return "Folga";
+  const obra = obraById(diaOrObraId);
   return obra ? obra.name : "Obra removida";
 }
 
 function getFuncionarioHistorico(funcionario) {
   return [...(Array.isArray(funcionario?.obraHistorico) ? funcionario.obraHistorico : [])]
+    .map((dia) => ({
+      ...dia,
+      status: normalizePontoStatus(dia)
+    }))
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function fillCargoSelect(select, selected = "", withAllLabel = "") {
+  if (!select) return;
+  const cargos = getFuncionarioCargos();
+  select.innerHTML = "";
+  if (withAllLabel) {
+    const all = document.createElement("option");
+    all.value = "all";
+    all.textContent = withAllLabel;
+    select.appendChild(all);
+  } else {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Selecione o cargo";
+    select.appendChild(placeholder);
+  }
+  cargos.forEach((cargo) => {
+    const opt = document.createElement("option");
+    opt.value = cargo;
+    opt.textContent = cargo;
+    select.appendChild(opt);
+  });
+  if (selected && selected !== "all" && ![...select.options].some((o) => o.value === selected)) {
+    const opt = document.createElement("option");
+    opt.value = selected;
+    opt.textContent = selected;
+    select.appendChild(opt);
+  }
+  if (withAllLabel) {
+    select.value = selected || "all";
+  } else {
+    select.value = selected || "";
+  }
 }
 
 function syncObraEtapaField() {
@@ -1299,15 +1456,8 @@ function openFuncionarioModal(funcionario) {
     : "Novo funcionário";
   document.getElementById("funcionario-id").value = funcionario?.id || "";
   document.getElementById("funcionario-name").value = funcionario?.name || "";
-  const roleSelect = document.getElementById("funcionario-role");
   const role = funcionario?.role || "";
-  if (role && ![...roleSelect.options].some((o) => o.value === role)) {
-    const opt = document.createElement("option");
-    opt.value = role;
-    opt.textContent = role;
-    roleSelect.appendChild(opt);
-  }
-  roleSelect.value = role;
+  fillCargoSelect(document.getElementById("funcionario-role"), role);
   document.getElementById("funcionario-phone").value = funcionario?.phone || "";
   document.getElementById("funcionario-salary").value = funcionario?.salary ?? "";
   document.getElementById("funcionario-status").value = funcionario?.status || "ativo";
@@ -1343,7 +1493,7 @@ function renderFuncionarios() {
   const badge = document.getElementById("funcionarios-count-badge");
   const filterSelect = document.getElementById("funcionario-role-filter");
   if (badge) badge.textContent = String(state.funcionarios.length);
-  if (filterSelect) filterSelect.value = state.funcionarioRoleFilter || "all";
+  fillCargoSelect(filterSelect, state.funcionarioRoleFilter || "all", "Todos os cargos");
   if (!wrap) return;
 
   if (!state.funcionarios.length) {
@@ -1378,16 +1528,19 @@ function renderFuncionarios() {
   }
 
   const obraOptions = [
-    `<option value="all">Sem obra / folga</option>`,
+    `<option value="all">Folga</option>`,
     ...state.obras.map((o) => `<option value="${o.id}">${o.name}</option>`)
   ].join("");
 
   wrap.innerHTML = sorted.map((f) => {
+    const diaHoje = getFuncionarioHistorico(f).find((d) => d.date === todayISO());
+    const statusHoje = normalizePontoStatus(diaHoje) || (f.obraId ? "presente" : "folga");
     const obraHojeId = getObraDoDia(f, todayISO());
     const obraHoje = obraHojeId ? obraById(obraHojeId) : null;
     const historicoCompleto = getFuncionarioHistorico(f);
     const historico = historicoCompleto.slice(0, 3);
     const totalDias = historicoCompleto.length;
+    const totalFaltas = historicoCompleto.filter((d) => d.status === "falta").length;
     return `
     <article class="funcionario-card ${f.status === "inativo" ? "is-inactive" : ""}" data-funcionario-card="${f.id}">
       <div class="funcionario-card-top">
@@ -1409,9 +1562,15 @@ function renderFuncionarios() {
           <strong>${f.salary ? currency(Number(f.salary)) : "Não informado"}</strong>
         </div>
         <div class="funcionario-obra-field">
-          <span>Obra de hoje</span>
-          <strong>${obraHoje ? obraHoje.name : "Sem obra / folga"}</strong>
-          <small>${obraHoje ? (obraHoje.location || obraStatusLabel(obraHoje.status)) : "Nenhum registro para o dia de hoje"}</small>
+          <span>Hoje</span>
+          <strong>${
+            statusHoje === "falta"
+              ? "Falta"
+              : statusHoje === "folga"
+                ? "Folga"
+                : (obraHoje ? obraHoje.name : "Presente")
+          }</strong>
+          <small>${totalDias} registro(s) · ${totalFaltas} falta(s)</small>
         </div>
       </div>
 
@@ -1428,6 +1587,14 @@ function renderFuncionarios() {
             <input type="date" data-dia-date="${f.id}" value="${todayISO()}" />
           </label>
           <label>
+            <span>Situação</span>
+            <select data-dia-status="${f.id}">
+              <option value="presente">Presente</option>
+              <option value="falta">Falta</option>
+              <option value="folga">Folga</option>
+            </select>
+          </label>
+          <label>
             <span>Obra do dia</span>
             <select data-dia-obra="${f.id}">
               ${obraOptions}
@@ -1440,7 +1607,7 @@ function renderFuncionarios() {
             ${historico.map((dia) => `
               <li>
                 <strong>${formatShortDate(dia.date)}</strong>
-                <span>${obraDiaLabel(dia.obraId)}</span>
+                <span>${obraDiaLabel(dia)}</span>
               </li>
             `).join("")}
           </ul>
@@ -1458,6 +1625,9 @@ function renderFuncionarios() {
 
   sorted.forEach((f) => {
     const select = wrap.querySelector(`select[data-dia-obra="${f.id}"]`);
+    const statusSelect = wrap.querySelector(`select[data-dia-status="${f.id}"]`);
+    const diaHoje = getFuncionarioHistorico(f).find((d) => d.date === todayISO());
+    if (statusSelect) statusSelect.value = normalizePontoStatus(diaHoje);
     if (!select) return;
     const obraHojeId = getObraDoDia(f, todayISO());
     if (obraHojeId && [...select.options].some((o) => o.value === obraHojeId)) {
@@ -1495,15 +1665,17 @@ function renderFuncionarioDiasList(funcionario) {
     list.innerHTML = `<li class="empty-state"><p>Nenhum dia registrado para este funcionário.</p></li>`;
     return;
   }
+  const faltas = historico.filter((d) => d.status === "falta").length;
+  const presentes = historico.filter((d) => d.status === "presente").length;
   list.innerHTML = `
     <li class="funcionario-dias-total">
-      <strong>Total de dias registrados: ${historico.length}</strong>
+      <strong>${historico.length} registro(s) · ${presentes} presente(s) · ${faltas} falta(s)</strong>
     </li>
     ${historico.map((dia) => `
     <li class="funcionario-dia-row">
       <div>
         <strong>${formatShortDate(dia.date)}</strong>
-        <small>${obraDiaLabel(dia.obraId)}</small>
+        <small>${obraDiaLabel(dia)}</small>
       </div>
       <button type="button" class="icon-btn" data-dia-del="${dia.id}" title="Excluir dia">✕</button>
     </li>
@@ -1515,6 +1687,8 @@ function openFuncionarioDiasModal(funcionario) {
   document.getElementById("funcionario-dias-id").value = funcionario.id;
   document.getElementById("funcionario-dias-title").textContent = `Controle diário — ${funcionario.name}`;
   document.getElementById("funcionario-dias-date").value = todayISO();
+  const statusSelect = document.getElementById("funcionario-dias-status");
+  if (statusSelect) statusSelect.value = "presente";
   fillFuncionarioObraSelect(
     document.getElementById("funcionario-dias-obra"),
     funcionario.obraId || "all",
@@ -1524,8 +1698,11 @@ function openFuncionarioDiasModal(funcionario) {
   document.getElementById("funcionario-dias-modal").showModal();
 }
 
-function saveFuncionarioDia(funcionarioId, date, obraValue) {
-  const obraId = !obraValue || obraValue === "all" ? null : obraValue;
+function saveFuncionarioDia(funcionarioId, date, obraValue, status = "presente") {
+  let obraId = !obraValue || obraValue === "all" ? null : obraValue;
+  let resolvedStatus = status || "presente";
+  if (resolvedStatus === "presente" && !obraId) resolvedStatus = "folga";
+  if (resolvedStatus !== "presente") obraId = null;
   if (!funcionarioId || !date) {
     showToast("Informe a data");
     return;
@@ -1533,11 +1710,13 @@ function saveFuncionarioDia(funcionarioId, date, obraValue) {
   const idx = state.funcionarios.findIndex((f) => f.id === funcionarioId);
   if (idx < 0) return;
   const atual = state.funcionarios[idx];
-  const historico = upsertObraDia(atual.obraHistorico, date, obraId);
+  const historico = upsertObraDia(atual.obraHistorico, date, obraId, resolvedStatus);
   const updated = {
     ...atual,
     obraHistorico: historico,
-    obraId: date === todayISO() ? obraId : atual.obraId
+    obraId: date === todayISO()
+      ? (resolvedStatus === "presente" ? obraId : null)
+      : atual.obraId
   };
   state.funcionarios[idx] = updated;
   save();
@@ -1546,7 +1725,13 @@ function saveFuncionarioDia(funcionarioId, date, obraValue) {
     renderFuncionarioDiasList(updated);
   }
   refresh();
-  showToast("Dia registrado");
+  showToast(
+    resolvedStatus === "falta"
+      ? "Falta registrada"
+      : resolvedStatus === "folga"
+        ? "Folga registrada"
+        : "Presença registrada"
+  );
 }
 
 function deleteFuncionarioDia(funcionarioId, diaId) {
@@ -1604,6 +1789,203 @@ function openMobileMenu() {
   setMobileMenu(true);
 }
 
+function renderCatalogManager() {
+  const expenseList = document.getElementById("settings-expense-list");
+  const incomeList = document.getElementById("settings-income-list");
+  const cargoList = document.getElementById("settings-cargo-list");
+  if (!expenseList || !incomeList || !cargoList) return;
+
+  const renderCatItems = (list, kind) => {
+    if (!list.length) return `<li class="empty-state"><p>Nenhuma categoria cadastrada.</p></li>`;
+    return list.map((cat) => `
+      <li class="catalog-item">
+        <span class="catalog-swatch" style="background:${cat.color}"></span>
+        <strong>${cat.name}</strong>
+        <button type="button" class="icon-btn" data-del-cat="${kind}:${cat.id}" title="Remover">✕</button>
+      </li>
+    `).join("");
+  };
+
+  expenseList.innerHTML = renderCatItems(getExpenseCategories(), "expense");
+  incomeList.innerHTML = renderCatItems(getIncomeCategories(), "income");
+  cargoList.innerHTML = getFuncionarioCargos().length
+    ? getFuncionarioCargos().map((cargo) => `
+      <li class="catalog-item">
+        <strong>${cargo}</strong>
+        <button type="button" class="icon-btn" data-del-cargo="${cargo}" title="Remover">✕</button>
+      </li>
+    `).join("")
+    : `<li class="empty-state"><p>Nenhum cargo cadastrado.</p></li>`;
+}
+
+function addCategory(kind, name) {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) {
+    showToast("Informe o nome da categoria");
+    return;
+  }
+  const list = kind === "income" ? getIncomeCategories() : getExpenseCategories();
+  if (list.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+    showToast("Essa categoria já existe");
+    return;
+  }
+  list.push({
+    id: uniqueCategoryId(trimmed, getAllCategories()),
+    name: trimmed,
+    color: nextCategoryColor(list)
+  });
+  if (kind === "income") state.incomeCategories = list;
+  else state.expenseCategories = list;
+  save();
+  refresh();
+  showToast("Categoria adicionada");
+}
+
+function removeCategory(kind, id) {
+  const list = kind === "income" ? getIncomeCategories() : getExpenseCategories();
+  if (list.length <= 1) {
+    showToast("Mantenha ao menos uma categoria");
+    return;
+  }
+  const used = state.transactions.some((tx) => tx.category === id);
+  if (used && !confirm("Há lançamentos com essa categoria. Remover mesmo assim?")) return;
+  const next = list.filter((c) => c.id !== id);
+  if (kind === "income") state.incomeCategories = next;
+  else state.expenseCategories = next;
+  save();
+  refresh();
+  showToast("Categoria removida");
+}
+
+function addCargo(name) {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) {
+    showToast("Informe o cargo / função");
+    return;
+  }
+  const list = getFuncionarioCargos();
+  if (list.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+    showToast("Esse cargo já existe");
+    return;
+  }
+  state.funcionarioCargos = [...list, trimmed];
+  save();
+  refresh();
+  showToast("Cargo adicionado");
+}
+
+function removeCargo(name) {
+  const list = getFuncionarioCargos();
+  if (list.length <= 1) {
+    showToast("Mantenha ao menos um cargo");
+    return;
+  }
+  const used = state.funcionarios.some((f) => f.role === name);
+  if (used && !confirm("Há funcionários com esse cargo. Remover mesmo assim?")) return;
+  state.funcionarioCargos = list.filter((c) => c !== name);
+  if (state.funcionarioRoleFilter === name) state.funcionarioRoleFilter = "all";
+  save();
+  refresh();
+  showToast("Cargo removido");
+}
+
+function renderPonto() {
+  const dateInput = document.getElementById("ponto-date");
+  const summary = document.getElementById("ponto-summary");
+  const list = document.getElementById("ponto-list");
+  const badge = document.getElementById("ponto-count-badge");
+  if (!dateInput || !list) return;
+
+  if (!state.pontoDate) state.pontoDate = todayISO();
+  dateInput.value = state.pontoDate;
+
+  const ativos = state.funcionarios
+    .filter((f) => f.status !== "inativo")
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+  if (badge) {
+    const faltasHoje = ativos.filter((f) => {
+      const dia = getFuncionarioHistorico(f).find((d) => d.date === state.pontoDate);
+      return normalizePontoStatus(dia) === "falta";
+    }).length;
+    badge.textContent = String(faltasHoje);
+  }
+
+  if (!ativos.length) {
+    if (summary) summary.innerHTML = "";
+    list.innerHTML = `
+      <div class="obras-empty empty-state">
+        <p>Cadastre funcionários para registrar o ponto.</p>
+        <button type="button" class="primary-btn" id="ponto-goto-funcionarios">Ir para funcionários</button>
+      </div>
+    `;
+    return;
+  }
+
+  const obraOptions = [
+    `<option value="all">Sem obra</option>`,
+    ...state.obras.map((o) => `<option value="${o.id}">${o.name}</option>`)
+  ].join("");
+
+  let presentes = 0;
+  let faltas = 0;
+  let folgas = 0;
+
+  list.innerHTML = ativos.map((f) => {
+    const dia = getFuncionarioHistorico(f).find((d) => d.date === state.pontoDate);
+    const status = dia ? normalizePontoStatus(dia) : "";
+    if (status === "presente") presentes += 1;
+    else if (status === "falta") faltas += 1;
+    else if (status === "folga") folgas += 1;
+    const obraId = dia?.obraId || f.obraId || "all";
+    return `
+      <article class="ponto-card status-${status || "vazio"}" data-ponto-card="${f.id}">
+        <div class="ponto-card-head">
+          <div>
+            <strong>${f.name}</strong>
+            <p>${f.role || "Sem cargo"}</p>
+          </div>
+          <span class="ponto-pill">${status ? pontoStatusLabel(status) : "Sem registro"}</span>
+        </div>
+        <div class="ponto-card-controls">
+          <label>
+            <span>Situação</span>
+            <select data-ponto-status="${f.id}">
+              <option value="presente" ${status === "presente" ? "selected" : ""}>Presente</option>
+              <option value="falta" ${status === "falta" ? "selected" : ""}>Falta</option>
+              <option value="folga" ${status === "folga" || !status ? "selected" : ""}>Folga</option>
+            </select>
+          </label>
+          <label>
+            <span>Obra</span>
+            <select data-ponto-obra="${f.id}">
+              ${obraOptions}
+            </select>
+          </label>
+          <button type="button" class="primary-btn" data-ponto-save="${f.id}">Salvar</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  ativos.forEach((f) => {
+    const select = list.querySelector(`select[data-ponto-obra="${f.id}"]`);
+    if (!select) return;
+    const dia = getFuncionarioHistorico(f).find((d) => d.date === state.pontoDate);
+    const obraId = dia?.obraId || "";
+    select.value = obraId && [...select.options].some((o) => o.value === obraId) ? obraId : "all";
+  });
+
+  if (summary) {
+    summary.innerHTML = `
+      <article class="ponto-kpi"><span>Presentes</span><strong>${presentes}</strong></article>
+      <article class="ponto-kpi falta"><span>Faltas</span><strong>${faltas}</strong></article>
+      <article class="ponto-kpi folga"><span>Folgas</span><strong>${folgas}</strong></article>
+      <article class="ponto-kpi"><span>Sem registro</span><strong>${ativos.length - presentes - faltas - folgas}</strong></article>
+    `;
+  }
+}
+
 function showView(name) {
   document.querySelectorAll(".view").forEach((el) => el.classList.add("hidden"));
   document.getElementById(`view-${name}`).classList.remove("hidden");
@@ -1634,6 +2016,9 @@ function refresh() {
   renderRecurring();
   renderObras();
   renderFuncionarios();
+  renderPonto();
+  renderCatalogManager();
+  syncCategorySelect("main-category", document.getElementById("main-type")?.value || "all", "Todas as categorias");
 }
 
 function openModal(tx, preferredType, obraId = "") {
@@ -1704,7 +2089,7 @@ function bind() {
     if (e.key === "Escape") closeMobileMenu();
   });
   window.addEventListener("resize", () => {
-    if (window.innerWidth > 1100) closeMobileMenu();
+    if (window.innerWidth > 900) closeMobileMenu();
   });
 
   document.getElementById("dash-obras-strip")?.addEventListener("click", (e) => {
@@ -2000,7 +2385,8 @@ function bind() {
     if (saveDiaId) {
       const date = document.querySelector(`input[data-dia-date="${saveDiaId}"]`)?.value;
       const obraValue = document.querySelector(`select[data-dia-obra="${saveDiaId}"]`)?.value;
-      saveFuncionarioDia(saveDiaId, date, obraValue);
+      const status = document.querySelector(`select[data-dia-status="${saveDiaId}"]`)?.value || "presente";
+      saveFuncionarioDia(saveDiaId, date, obraValue, status);
       return;
     }
     const diasId = e.target.closest("[data-funcionario-dias]")?.dataset.funcionarioDias;
@@ -2026,7 +2412,8 @@ function bind() {
     const funcionarioId = document.getElementById("funcionario-dias-id").value;
     const date = document.getElementById("funcionario-dias-date").value;
     const obraValue = document.getElementById("funcionario-dias-obra").value;
-    saveFuncionarioDia(funcionarioId, date, obraValue);
+    const status = document.getElementById("funcionario-dias-status")?.value || "presente";
+    saveFuncionarioDia(funcionarioId, date, obraValue, status);
   });
 
   document.getElementById("funcionario-dias-list").addEventListener("click", (e) => {
@@ -2034,6 +2421,65 @@ function bind() {
     if (!diaId) return;
     const funcionarioId = document.getElementById("funcionario-dias-id").value;
     deleteFuncionarioDia(funcionarioId, diaId);
+  });
+
+  document.getElementById("settings-add-expense")?.addEventListener("click", () => {
+    const input = document.getElementById("settings-expense-name");
+    addCategory("expense", input?.value);
+    if (input) input.value = "";
+  });
+  document.getElementById("settings-add-income")?.addEventListener("click", () => {
+    const input = document.getElementById("settings-income-name");
+    addCategory("income", input?.value);
+    if (input) input.value = "";
+  });
+  document.getElementById("settings-add-cargo")?.addEventListener("click", () => {
+    const input = document.getElementById("settings-cargo-name");
+    addCargo(input?.value);
+    if (input) input.value = "";
+  });
+  ["settings-expense-name", "settings-income-name", "settings-cargo-name"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      document.getElementById(id.replace("-name", "-add") === id ? id : null);
+      if (id.includes("expense")) document.getElementById("settings-add-expense")?.click();
+      else if (id.includes("income")) document.getElementById("settings-add-income")?.click();
+      else document.getElementById("settings-add-cargo")?.click();
+    });
+  });
+
+  document.getElementById("settings-expense-list")?.addEventListener("click", (e) => {
+    const key = e.target.closest("[data-del-cat]")?.dataset.delCat;
+    if (!key) return;
+    const [kind, catId] = key.split(":");
+    removeCategory(kind, catId);
+  });
+  document.getElementById("settings-income-list")?.addEventListener("click", (e) => {
+    const key = e.target.closest("[data-del-cat]")?.dataset.delCat;
+    if (!key) return;
+    const [kind, catId] = key.split(":");
+    removeCategory(kind, catId);
+  });
+  document.getElementById("settings-cargo-list")?.addEventListener("click", (e) => {
+    const cargo = e.target.closest("[data-del-cargo]")?.dataset.delCargo;
+    if (cargo) removeCargo(cargo);
+  });
+
+  document.getElementById("ponto-date")?.addEventListener("change", (e) => {
+    state.pontoDate = e.target.value || todayISO();
+    renderPonto();
+  });
+  document.getElementById("ponto-list")?.addEventListener("click", (e) => {
+    if (e.target.id === "ponto-goto-funcionarios") {
+      showView("funcionarios");
+      return;
+    }
+    const id = e.target.closest("[data-ponto-save]")?.dataset.pontoSave;
+    if (!id) return;
+    const status = document.querySelector(`select[data-ponto-status="${id}"]`)?.value || "presente";
+    const obraValue = document.querySelector(`select[data-ponto-obra="${id}"]`)?.value;
+    saveFuncionarioDia(id, state.pontoDate || todayISO(), obraValue, status);
   });
 
   document.getElementById("save-settings").addEventListener("click", () => {

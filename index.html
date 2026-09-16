@@ -87,6 +87,13 @@
             Funcionários
             <span class="nav-badge purple" id="funcionarios-count-badge">0</span>
           </button>
+          <button class="nav-item" data-view="ponto">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            Ponto
+            <span class="nav-badge" id="ponto-count-badge">0</span>
+          </button>
 
           <p class="nav-label">Análises</p>
           <button class="nav-item" data-view="reports">
@@ -471,6 +478,36 @@
               <textarea id="cloud-sql-text" rows="14" readonly></textarea>
               <button type="button" class="ghost-btn" id="copy-cloud-sql">Copiar SQL</button>
             </div>
+
+            <div class="catalog-section">
+              <h3>Categorias de despesa</h3>
+              <p class="muted">Adicione ou remova categorias usadas nos lançamentos de saída.</p>
+              <div class="catalog-add">
+                <input type="text" id="settings-expense-name" maxlength="40" placeholder="Ex.: Material elétrico" />
+                <button type="button" class="primary-btn" id="settings-add-expense">Adicionar</button>
+              </div>
+              <ul class="catalog-list" id="settings-expense-list"></ul>
+            </div>
+
+            <div class="catalog-section">
+              <h3>Categorias de receita</h3>
+              <p class="muted">Adicione ou remova categorias usadas nas entradas.</p>
+              <div class="catalog-add">
+                <input type="text" id="settings-income-name" maxlength="40" placeholder="Ex.: Comissão extra" />
+                <button type="button" class="primary-btn" id="settings-add-income">Adicionar</button>
+              </div>
+              <ul class="catalog-list" id="settings-income-list"></ul>
+            </div>
+
+            <div class="catalog-section">
+              <h3>Cargos / funções</h3>
+              <p class="muted">Lista usada no cadastro e filtro de funcionários.</p>
+              <div class="catalog-add">
+                <input type="text" id="settings-cargo-name" maxlength="40" placeholder="Ex.: Pintor" />
+                <button type="button" class="primary-btn" id="settings-add-cargo">Adicionar</button>
+              </div>
+              <ul class="catalog-list" id="settings-cargo-list"></ul>
+            </div>
           </article>
         </section>
 
@@ -507,17 +544,26 @@
               <span>Filtrar por cargo / função</span>
               <select id="funcionario-role-filter">
                 <option value="all">Todos os cargos</option>
-                <option value="Pedreiro">Pedreiro</option>
-                <option value="Ajudante">Ajudante</option>
-                <option value="Azulejista">Azulejista</option>
-                <option value="Pedreiro meia colher">Pedreiro meia colher</option>
-                <option value="Eletricista">Eletricista</option>
-                <option value="Encanador">Encanador</option>
-                <option value="Marceneiro">Marceneiro</option>
-                <option value="Amarrador">Amarrador</option>
               </select>
             </label>
             <div class="funcionarios-grid" id="funcionarios-grid"></div>
+          </article>
+        </section>
+
+        <section class="view hidden" id="view-ponto">
+          <article class="panel full ponto-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Ponto</h2>
+                <p>Registre presença, falta e folga dos funcionários por dia</p>
+              </div>
+              <label class="ponto-date-field">
+                <span>Data</span>
+                <input type="date" id="ponto-date" />
+              </label>
+            </div>
+            <div class="ponto-summary" id="ponto-summary"></div>
+            <div class="ponto-list" id="ponto-list"></div>
           </article>
         </section>
       </main>
@@ -623,14 +669,6 @@
           Cargo / função
           <select id="funcionario-role" required>
             <option value="">Selecione o cargo</option>
-            <option value="Pedreiro">Pedreiro</option>
-            <option value="Ajudante">Ajudante</option>
-            <option value="Azulejista">Azulejista</option>
-            <option value="Pedreiro meia colher">Pedreiro meia colher</option>
-            <option value="Eletricista">Eletricista</option>
-            <option value="Encanador">Encanador</option>
-            <option value="Marceneiro">Marceneiro</option>
-            <option value="Amarrador">Amarrador</option>
           </select>
         </label>
         <label>
@@ -672,10 +710,18 @@
     <form method="dialog" id="funcionario-dias-form" onsubmit="return false;">
       <h2 id="funcionario-dias-title">Controle diário</h2>
       <input type="hidden" id="funcionario-dias-id" />
-      <p class="muted funcionario-dias-help">Registre em qual obra o funcionário trabalhou em cada dia.</p>
+      <p class="muted funcionario-dias-help">Registre presença, falta ou folga do funcionário em cada dia.</p>
       <label>
         Data
         <input type="date" id="funcionario-dias-date" required />
+      </label>
+      <label>
+        Situação
+        <select id="funcionario-dias-status">
+          <option value="presente">Presente</option>
+          <option value="falta">Falta</option>
+          <option value="folga">Folga</option>
+        </select>
       </label>
       <label>
         Obra do dia
