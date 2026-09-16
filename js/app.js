@@ -1,3 +1,5 @@
+import { getSupabaseClient, getSupabaseProjectHost } from "./supabase-client.js";
+
 const STORAGE_KEY = "financas-dashboard-v5";
 
 const EXPENSE_CATEGORIES = [
@@ -162,69 +164,130 @@ function saveLocal() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(getStatePayload()));
 }
 
-function getSupabaseClient() {
-  if (!window.supabase || !window.SUPABASE_CONFIG?.url || !window.SUPABASE_CONFIG?.anonKey) {
-    return null;
-  }
-  if (!getSupabaseClient._client) {
-    getSupabaseClient._client = window.supabase.createClient(
-      window.SUPABASE_CONFIG.url,
-      window.SUPABASE_CONFIG.anonKey
-    );
-  }
-  return getSupabaseClient._client;
-}
-
 function setCloudStatus(message) {
   const el = document.getElementById("cloud-status");
-  if (el) el.textContent = message;
+  if (!el) return;
+  const host = getSupabaseProjectHost();
+  el.textContent = host ? `${message} · ${host}` : message;
+}
+
+const CLOUD_STATE_ID = "main";
+
+function getCloudSetupSql() {
+  return `-- Rode no SQL Editor do Supabase (só o SQL, não o caminho do arquivo)
+
+create table if not exists public.app_state (
+  id text primary key,
+  payload jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.app_state enable row level security;
+
+drop policy if exists "anon_read_write_app_state" on public.app_state;
+
+create policy "anon_read_write_app_state"
+on public.app_state
+for all
+to anon, authenticated
+using (true)
+with check (true);
+
+grant select, insert, update, delete on public.app_state to anon, authenticated;
+
+notify pgrst, 'reload schema';`;
+}
+
+function showCloudSqlHelp(show) {
+  const box = document.getElementById("cloud-sql-help");
+  const area = document.getElementById("cloud-sql-text");
+  const title = box?.querySelector("p strong");
+  if (!box) return;
+  box.classList.toggle("hidden", !show);
+  if (!show) return;
+  if (title) {
+    title.textContent = "Falta criar a tabela app_state no Supabase.";
+  }
+  if (area) area.value = getCloudSetupSql();
 }
 
 async function saveCloud() {
   const client = getSupabaseClient();
   if (!client) {
-    setCloudStatus("Nuvem: biblioteca não carregou");
+    setCloudStatus("Nuvem: configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env");
+    showCloudSqlHelp(false);
+    return false;
+  }
+  if (location.protocol === "file:") {
+    setCloudStatus("Nuvem: abra o site com npm run dev (não file://)");
+    showCloudSqlHelp(false);
     return false;
   }
   setCloudStatus("Nuvem: salvando...");
-  const { error } = await client.from("app_state").upsert({
-    id: "main",
-    payload: getStatePayload(),
-    updated_at: new Date().toISOString()
-  });
-  if (error) {
-    console.warn("Supabase save:", error);
-    setCloudStatus(`Nuvem: erro (${error.message}). Rode o SQL em sql/schema.sql`);
+  try {
+    const { error } = await client.from("app_state").upsert(
+      {
+        id: CLOUD_STATE_ID,
+        payload: getStatePayload(),
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "id" }
+    );
+    if (error) {
+      console.warn("Supabase save:", error);
+      setCloudStatus(`Nuvem: erro (${error.message}). Rode o SQL em sql/schema.sql`);
+      showCloudSqlHelp(true);
+      return false;
+    }
+    showCloudSqlHelp(false);
+    setCloudStatus(`Nuvem: salvo às ${new Date().toLocaleTimeString("pt-BR")}`);
+    return true;
+  } catch (err) {
+    console.warn(err);
+    setCloudStatus(`Nuvem: erro — ${err.message || err}`);
+    showCloudSqlHelp(true);
     return false;
   }
-  setCloudStatus(`Nuvem: salvo às ${new Date().toLocaleTimeString("pt-BR")}`);
-  return true;
 }
 
 async function loadCloud() {
   const client = getSupabaseClient();
   if (!client) return false;
   setCloudStatus("Nuvem: carregando...");
-  const { data, error } = await client
-    .from("app_state")
-    .select("payload, updated_at")
-    .eq("id", "main")
-    .maybeSingle();
-  if (error) {
-    console.warn("Supabase load:", error);
-    setCloudStatus(`Nuvem: erro (${error.message}). Rode o SQL em sql/schema.sql`);
+  try {
+    const { data, error } = await client
+      .from("app_state")
+      .select("payload, updated_at")
+      .eq("id", CLOUD_STATE_ID)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Supabase load:", error);
+      setCloudStatus(`Nuvem: erro (${error.message}). Rode o SQL em sql/schema.sql`);
+      showCloudSqlHelp(true);
+      return false;
+    }
+
+    if (!data) {
+      setCloudStatus("Nuvem: vazia — enviando dados locais...");
+      await saveCloud();
+      return false;
+    }
+
+    applyStatePayload(data.payload);
+    saveLocal();
+    showCloudSqlHelp(false);
+    const when = data.updated_at
+      ? new Date(data.updated_at).toLocaleString("pt-BR")
+      : new Date().toLocaleString("pt-BR");
+    setCloudStatus(`Nuvem: sincronizado (${when})`);
+    return true;
+  } catch (err) {
+    console.warn(err);
+    setCloudStatus(`Nuvem: erro — ${err.message || err}`);
+    showCloudSqlHelp(true);
     return false;
   }
-  if (!data?.payload) {
-    setCloudStatus("Nuvem: vazia — enviando dados locais...");
-    await saveCloud();
-    return false;
-  }
-  applyStatePayload(data.payload);
-  saveLocal();
-  const when = data.updated_at ? new Date(data.updated_at).toLocaleString("pt-BR") : "";
-  setCloudStatus(when ? `Nuvem: sincronizado (${when})` : "Nuvem: sincronizado");
-  return true;
 }
 
 let cloudSaveTimer = null;
@@ -1986,7 +2049,19 @@ function bind() {
 
   document.getElementById("sync-cloud-btn")?.addEventListener("click", async () => {
     const ok = await saveCloud();
-    showToast(ok ? "Dados salvos na nuvem" : "Falha ao salvar na nuvem");
+    const status = document.getElementById("cloud-status")?.textContent || "";
+    showToast(ok ? "Dados salvos na nuvem" : status || "Falha ao salvar na nuvem");
+  });
+
+  document.getElementById("copy-cloud-sql")?.addEventListener("click", async () => {
+    const text = document.getElementById("cloud-sql-text")?.value || getCloudSetupSql();
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("SQL copiado");
+    } catch {
+      document.getElementById("cloud-sql-text")?.select();
+      showToast("Selecione o SQL e copie com Ctrl+C");
+    }
   });
 
   document.getElementById("logout-btn")?.addEventListener("click", () => {

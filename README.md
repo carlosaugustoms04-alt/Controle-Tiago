@@ -1,25 +1,42 @@
 # Controle-Tiago
 
-Site de finanças da Martins Imóveis (HTML, CSS e JavaScript) com backup na nuvem via Supabase.
+Site de finanças da Martins Imóveis com backup na nuvem via Supabase.
 
-## Como abrir
+## Site online
 
-Abra o arquivo `index.html` no navegador (de preferência por um servidor local `http://`, não só `file://`).
+https://carlosaugustoms04-alt.github.io/Controle-Tiago/
+
+## Desenvolvimento local
+
+```bash
+npm install
+npm run dev
+```
+
+Abra o endereço do terminal (em geral `http://localhost:5173/Controle-Tiago/`).
+
+Build de produção:
+
+```bash
+npm run build
+npm run preview
+```
+
+## Supabase
+
+1. No Supabase → **SQL Editor**, execute o conteúdo de `sql/schema.sql`
+2. Credenciais de produção ficam em `.env.production` (chave publishable/anon — pública no frontend)
+3. Para desenvolvimento local, use o arquivo `.env` (não vai para o Git)
 
 ## Login
 
 - Usuário: `Tiago`
-- Senha: a configurada no app (padrão inicial definido no código)
+- Senha: a configurada no app
 
-## Supabase (salvar na nuvem)
+## Deploy (GitHub Pages)
 
-1. Abra o projeto no Supabase → **SQL Editor**
-2. Cole e execute o arquivo `sql/schema.sql`
-3. No site, entre e use **Configurações → Salvar na nuvem**
+Cada push na branch `main` dispara o workflow `.github/workflows/deploy-pages.yml`.
 
-Depois disso, cada alteração também tenta sincronizar automaticamente com a nuvem (além do navegador).
+Na primeira vez, no GitHub do repositório:
 
-## Segurança
-
-- No frontend use **apenas** a URL + chave **anon**
-- Nunca publique `service_role`, senha do Postgres ou JWT secret no GitHub ou no código do site
+**Settings → Pages → Build and deployment → Source: GitHub Actions**
