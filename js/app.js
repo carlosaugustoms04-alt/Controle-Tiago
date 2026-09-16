@@ -102,7 +102,8 @@ const state = {
   activeObraId: null,
   obraEtapaFilter: "all",
   funcionarioRoleFilter: "all",
-  pontoDate: null,
+  pontoCalendarMonth: null,
+  pontoCalendarFuncionarioId: null,
   trendDays: 30,
   authenticated: false
 };
@@ -171,7 +172,6 @@ function applyStatePayload(parsed) {
   state.obras = Array.isArray(parsed.obras) ? parsed.obras : [];
   state.funcionarios = Array.isArray(parsed.funcionarios) ? parsed.funcionarios : [];
   state.activeObraId = parsed.activeObraId || state.obras[0]?.id || null;
-  if (!state.pontoDate) state.pontoDate = todayISO();
 }
 
 function getExpenseCategories() {
@@ -1701,7 +1701,6 @@ function openFuncionarioDiasModal(funcionario) {
 function saveFuncionarioDia(funcionarioId, date, obraValue, status = "presente") {
   let obraId = !obraValue || obraValue === "all" ? null : obraValue;
   let resolvedStatus = status || "presente";
-  if (resolvedStatus === "presente" && !obraId) resolvedStatus = "folga";
   if (resolvedStatus !== "presente") obraId = null;
   if (!funcionarioId || !date) {
     showToast("Informe a data");
@@ -1889,30 +1888,56 @@ function removeCargo(name) {
   showToast("Cargo removido");
 }
 
+function monthKeyFromDate(iso = todayISO()) {
+  return String(iso || todayISO()).slice(0, 7);
+}
+
+function shiftMonthKey(monthKey, delta) {
+  const [y, m] = String(monthKey || monthKeyFromDate()).split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(monthKey) {
+  const [y, m] = String(monthKey || monthKeyFromDate()).split("-").map(Number);
+  const label = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric"
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function daysInMonth(monthKey) {
+  const [y, m] = String(monthKey).split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+function firstWeekdayOfMonth(monthKey) {
+  const [y, m] = String(monthKey).split("-").map(Number);
+  // 0 = domingo
+  return new Date(y, m - 1, 1).getDay();
+}
+
+function getPontoDia(funcionario, date) {
+  return getFuncionarioHistorico(funcionario).find((d) => d.date === date) || null;
+}
+
 function renderPonto() {
-  const dateInput = document.getElementById("ponto-date");
-  const summary = document.getElementById("ponto-summary");
   const list = document.getElementById("ponto-list");
   const badge = document.getElementById("ponto-count-badge");
-  if (!dateInput || !list) return;
-
-  if (!state.pontoDate) state.pontoDate = todayISO();
-  dateInput.value = state.pontoDate;
+  if (!list) return;
 
   const ativos = state.funcionarios
     .filter((f) => f.status !== "inativo")
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
+  const hoje = todayISO();
   if (badge) {
-    const faltasHoje = ativos.filter((f) => {
-      const dia = getFuncionarioHistorico(f).find((d) => d.date === state.pontoDate);
-      return normalizePontoStatus(dia) === "falta";
-    }).length;
+    const faltasHoje = ativos.filter((f) => normalizePontoStatus(getPontoDia(f, hoje)) === "falta").length;
     badge.textContent = String(faltasHoje);
   }
 
   if (!ativos.length) {
-    if (summary) summary.innerHTML = "";
     list.innerHTML = `
       <div class="obras-empty empty-state">
         <p>Cadastre funcionários para registrar o ponto.</p>
@@ -1922,68 +1947,141 @@ function renderPonto() {
     return;
   }
 
-  const obraOptions = [
-    `<option value="all">Sem obra</option>`,
-    ...state.obras.map((o) => `<option value="${o.id}">${o.name}</option>`)
-  ].join("");
+  list.innerHTML = ativos.map((f) => {
+    const historico = getFuncionarioHistorico(f);
+    const presentes = historico.filter((d) => d.status === "presente").length;
+    const faltas = historico.filter((d) => d.status === "falta").length;
+    const hojeStatus = normalizePontoStatus(getPontoDia(f, hoje));
+    return `
+      <article class="ponto-person-card" data-ponto-card="${f.id}">
+        <div class="ponto-person-avatar">${(f.name || "?").trim().charAt(0).toUpperCase()}</div>
+        <strong class="ponto-person-name">${f.name}</strong>
+        <p class="ponto-person-role">${f.role || "Sem cargo"}</p>
+        <p class="ponto-person-stats">${presentes} dia(s) · ${faltas} falta(s)</p>
+        <span class="ponto-pill ${hojeStatus || "vazio"}">${hojeStatus ? `Hoje: ${pontoStatusLabel(hojeStatus)}` : "Hoje sem registro"}</span>
+        <button type="button" class="primary-btn ponto-presenca-btn" data-ponto-presenca="${f.id}">Presença</button>
+      </article>
+    `;
+  }).join("");
+}
+
+function openPontoCalendar(funcionarioId, monthKey = null) {
+  const funcionario = state.funcionarios.find((f) => f.id === funcionarioId);
+  if (!funcionario) return;
+  state.pontoCalendarFuncionarioId = funcionarioId;
+  state.pontoCalendarMonth = monthKey || state.pontoCalendarMonth || monthKeyFromDate();
+  renderPontoCalendar();
+  document.getElementById("ponto-calendar-modal")?.showModal();
+}
+
+function renderPontoCalendar() {
+  const modal = document.getElementById("ponto-calendar-modal");
+  const grid = document.getElementById("ponto-calendar-grid");
+  const title = document.getElementById("ponto-calendar-title");
+  const monthLabelEl = document.getElementById("ponto-calendar-month");
+  const summary = document.getElementById("ponto-calendar-summary");
+  if (!modal || !grid) return;
+
+  const funcionario = state.funcionarios.find((f) => f.id === state.pontoCalendarFuncionarioId);
+  if (!funcionario) return;
+
+  if (!state.pontoCalendarMonth) state.pontoCalendarMonth = monthKeyFromDate();
+  const monthKey = state.pontoCalendarMonth;
+  const totalDays = daysInMonth(monthKey);
+  const startPad = firstWeekdayOfMonth(monthKey);
+  const byDate = new Map(getFuncionarioHistorico(funcionario).map((d) => [d.date, d]));
+
+  if (title) title.textContent = `Presença — ${funcionario.name}`;
+  if (monthLabelEl) monthLabelEl.textContent = monthLabel(monthKey);
 
   let presentes = 0;
   let faltas = 0;
   let folgas = 0;
+  let semRegistro = 0;
+  const today = todayISO();
+  const cells = [];
 
-  list.innerHTML = ativos.map((f) => {
-    const dia = getFuncionarioHistorico(f).find((d) => d.date === state.pontoDate);
+  for (let i = 0; i < startPad; i += 1) {
+    cells.push(`<div class="ponto-cal-cell is-empty"></div>`);
+  }
+
+  for (let day = 1; day <= totalDays; day += 1) {
+    const date = `${monthKey}-${String(day).padStart(2, "0")}`;
+    const dia = byDate.get(date);
     const status = dia ? normalizePontoStatus(dia) : "";
     if (status === "presente") presentes += 1;
     else if (status === "falta") faltas += 1;
     else if (status === "folga") folgas += 1;
-    const obraId = dia?.obraId || f.obraId || "all";
-    return `
-      <article class="ponto-card status-${status || "vazio"}" data-ponto-card="${f.id}">
-        <div class="ponto-card-head">
-          <div>
-            <strong>${f.name}</strong>
-            <p>${f.role || "Sem cargo"}</p>
-          </div>
-          <span class="ponto-pill">${status ? pontoStatusLabel(status) : "Sem registro"}</span>
-        </div>
-        <div class="ponto-card-controls">
-          <label>
-            <span>Situação</span>
-            <select data-ponto-status="${f.id}">
-              <option value="presente" ${status === "presente" ? "selected" : ""}>Presente</option>
-              <option value="falta" ${status === "falta" ? "selected" : ""}>Falta</option>
-              <option value="folga" ${status === "folga" || !status ? "selected" : ""}>Folga</option>
-            </select>
-          </label>
-          <label>
-            <span>Obra</span>
-            <select data-ponto-obra="${f.id}">
-              ${obraOptions}
-            </select>
-          </label>
-          <button type="button" class="primary-btn" data-ponto-save="${f.id}">Salvar</button>
-        </div>
-      </article>
-    `;
-  }).join("");
+    else semRegistro += 1;
 
-  ativos.forEach((f) => {
-    const select = list.querySelector(`select[data-ponto-obra="${f.id}"]`);
-    if (!select) return;
-    const dia = getFuncionarioHistorico(f).find((d) => d.date === state.pontoDate);
-    const obraId = dia?.obraId || "";
-    select.value = obraId && [...select.options].some((o) => o.value === obraId) ? obraId : "all";
-  });
+    const detail = status === "presente" && dia?.obraId
+      ? (obraById(dia.obraId)?.name || "Presente")
+      : (status ? pontoStatusLabel(status) : "Sem registro");
+
+    cells.push(`
+      <button type="button" class="ponto-cal-cell status-${status || "none"} ${date === today ? "is-today" : ""}" data-ponto-day="${date}" title="${detail}">
+        <span class="ponto-cal-day">${day}</span>
+        <span class="ponto-cal-mark">${status === "presente" ? "●" : status === "falta" ? "✕" : status === "folga" ? "○" : ""}</span>
+      </button>
+    `);
+  }
+
+  grid.innerHTML = `
+    <div class="ponto-cal-weekdays">
+      <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+    </div>
+    <div class="ponto-cal-days">${cells.join("")}</div>
+  `;
 
   if (summary) {
     summary.innerHTML = `
-      <article class="ponto-kpi"><span>Presentes</span><strong>${presentes}</strong></article>
-      <article class="ponto-kpi falta"><span>Faltas</span><strong>${faltas}</strong></article>
-      <article class="ponto-kpi folga"><span>Folgas</span><strong>${folgas}</strong></article>
-      <article class="ponto-kpi"><span>Sem registro</span><strong>${ativos.length - presentes - faltas - folgas}</strong></article>
+      <span class="ponto-legend-item presente"><i></i> Trabalhou (${presentes})</span>
+      <span class="ponto-legend-item falta"><i></i> Não trabalhou / falta (${faltas})</span>
+      <span class="ponto-legend-item folga"><i></i> Folga (${folgas})</span>
+      <span class="ponto-legend-item none"><i></i> Sem registro (${semRegistro})</span>
     `;
   }
+
+  const obraSelect = document.getElementById("ponto-calendar-obra");
+  if (obraSelect) {
+    fillFuncionarioObraSelect(obraSelect, funcionario.obraId || "all", true);
+  }
+}
+
+function cyclePontoStatus(current) {
+  if (current === "presente") return "falta";
+  if (current === "falta") return "folga";
+  if (current === "folga") return "";
+  return "presente";
+}
+
+function setPontoDayFromCalendar(date) {
+  const funcionarioId = state.pontoCalendarFuncionarioId;
+  const funcionario = state.funcionarios.find((f) => f.id === funcionarioId);
+  if (!funcionario || !date) return;
+  const current = normalizePontoStatus(getPontoDia(funcionario, date));
+  const next = cyclePontoStatus(current);
+  if (!next) {
+    // remove registro do dia
+    const idx = state.funcionarios.findIndex((f) => f.id === funcionarioId);
+    if (idx < 0) return;
+    const atual = state.funcionarios[idx];
+    const historico = getFuncionarioHistorico(atual).filter((d) => d.date !== date);
+    const hoje = historico.find((d) => d.date === todayISO());
+    state.funcionarios[idx] = {
+      ...atual,
+      obraHistorico: historico,
+      obraId: hoje ? hoje.obraId : (date === todayISO() ? null : atual.obraId)
+    };
+    save();
+    renderPontoCalendar();
+    renderPonto();
+    showToast("Registro removido");
+    return;
+  }
+  const obraValue = document.getElementById("ponto-calendar-obra")?.value || "all";
+  saveFuncionarioDia(funcionarioId, date, obraValue, next);
+  renderPontoCalendar();
 }
 
 function showView(name) {
@@ -2466,20 +2564,30 @@ function bind() {
     if (cargo) removeCargo(cargo);
   });
 
-  document.getElementById("ponto-date")?.addEventListener("change", (e) => {
-    state.pontoDate = e.target.value || todayISO();
-    renderPonto();
-  });
   document.getElementById("ponto-list")?.addEventListener("click", (e) => {
     if (e.target.id === "ponto-goto-funcionarios") {
       showView("funcionarios");
       return;
     }
-    const id = e.target.closest("[data-ponto-save]")?.dataset.pontoSave;
+    const id = e.target.closest("[data-ponto-presenca]")?.dataset.pontoPresenca;
     if (!id) return;
-    const status = document.querySelector(`select[data-ponto-status="${id}"]`)?.value || "presente";
-    const obraValue = document.querySelector(`select[data-ponto-obra="${id}"]`)?.value;
-    saveFuncionarioDia(id, state.pontoDate || todayISO(), obraValue, status);
+    openPontoCalendar(id, monthKeyFromDate());
+  });
+
+  document.getElementById("ponto-cal-prev")?.addEventListener("click", () => {
+    state.pontoCalendarMonth = shiftMonthKey(state.pontoCalendarMonth || monthKeyFromDate(), -1);
+    renderPontoCalendar();
+  });
+  document.getElementById("ponto-cal-next")?.addEventListener("click", () => {
+    state.pontoCalendarMonth = shiftMonthKey(state.pontoCalendarMonth || monthKeyFromDate(), 1);
+    renderPontoCalendar();
+  });
+  document.getElementById("ponto-calendar-grid")?.addEventListener("click", (e) => {
+    const date = e.target.closest("[data-ponto-day]")?.dataset.pontoDay;
+    if (date) setPontoDayFromCalendar(date);
+  });
+  document.getElementById("cancel-ponto-calendar")?.addEventListener("click", () => {
+    document.getElementById("ponto-calendar-modal")?.close();
   });
 
   document.getElementById("save-settings").addEventListener("click", () => {

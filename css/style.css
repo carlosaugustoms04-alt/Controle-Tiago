@@ -2216,114 +2216,98 @@ button, input, select {
   align-items: end;
 }
 
-.ponto-date-field {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 600;
-}
-
-.ponto-date-field input {
-  border: 1px solid rgba(184, 149, 106, 0.28);
-  background: rgba(3, 16, 31, 0.65);
-  color: #fff;
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-family: inherit;
-}
-
-.ponto-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 18px 0;
-}
-
-.ponto-kpi {
-  background: rgba(3, 16, 31, 0.45);
-  border: 1px solid rgba(184, 149, 106, 0.14);
-  border-radius: 16px;
-  padding: 14px 16px;
-  display: grid;
-  gap: 6px;
-}
-
-.ponto-kpi span {
-  color: var(--muted);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ponto-kpi strong {
-  font-size: 24px;
-  color: var(--gold-light);
-}
-
-.ponto-kpi.falta strong { color: #c97878; }
-.ponto-kpi.folga strong { color: #7d9bc4; }
-
 .ponto-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-}
-
-.ponto-card {
-  background: rgba(13, 35, 68, 0.72);
-  border: 1px solid rgba(184, 149, 106, 0.16);
-  border-radius: 18px;
-  padding: 16px;
-  display: grid;
-  gap: 14px;
-}
-
-.ponto-card.status-falta {
-  border-color: rgba(201, 120, 120, 0.45);
-}
-
-.ponto-card.status-presente {
-  border-color: rgba(184, 149, 106, 0.45);
-}
-
-.ponto-card-head {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: start;
+  flex-wrap: nowrap;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 6px 2px 16px;
+  scroll-snap-type: x proximity;
 }
 
-.ponto-card-head p {
+.ponto-person-card {
+  flex: 0 0 210px;
+  scroll-snap-align: start;
+  background: rgba(13, 35, 68, 0.72);
+  border: 1px solid rgba(184, 149, 106, 0.18);
+  border-radius: 20px;
+  padding: 18px 16px;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.ponto-person-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #c9a978, #8f7048);
+  color: #03101f;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.ponto-person-name {
+  color: #f4f1ea;
+  font-size: 16px;
+}
+
+.ponto-person-role,
+.ponto-person-stats {
   color: var(--muted);
-  font-size: 13px;
-  margin-top: 4px;
+  font-size: 12.5px;
 }
 
 .ponto-pill {
-  font-size: 12px;
+  font-size: 11px;
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(184, 149, 106, 0.14);
   color: var(--gold-light);
-  white-space: nowrap;
 }
 
-.ponto-card.status-falta .ponto-pill {
+.ponto-pill.falta {
   background: rgba(201, 120, 120, 0.18);
   color: #e2a0a0;
 }
 
-.ponto-card-controls {
-  display: grid;
-  gap: 10px;
+.ponto-pill.folga {
+  background: rgba(125, 155, 196, 0.18);
+  color: #9eb6d8;
 }
 
-.ponto-card-controls label {
+.ponto-pill.vazio,
+.ponto-pill.none,
+.ponto-pill:not(.presente):not(.falta):not(.folga) {
+  background: rgba(125, 139, 160, 0.16);
+  color: #aeb8c7;
+}
+
+.ponto-presenca-btn {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.ponto-cal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+
+.ponto-cal-toolbar strong {
+  color: #f4f1ea;
+  font-size: 16px;
+}
+
+.ponto-cal-obra {
   display: grid;
   gap: 6px;
+  margin-bottom: 14px;
   color: var(--muted);
   font-size: 12px;
   text-transform: uppercase;
@@ -2331,21 +2315,127 @@ button, input, select {
   font-weight: 600;
 }
 
-.ponto-card-controls select {
+.ponto-cal-obra select {
   border: 1px solid rgba(184, 149, 106, 0.28);
   background: rgba(3, 16, 31, 0.65);
   color: #fff;
   border-radius: 12px;
   padding: 10px 12px;
   font-family: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
 }
 
+.ponto-calendar-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.ponto-cal-weekdays,
+.ponto-cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ponto-cal-weekdays span {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 0;
+}
+
+.ponto-cal-cell {
+  min-height: 54px;
+  border-radius: 12px;
+  border: 1px solid rgba(184, 149, 106, 0.14);
+  background: rgba(3, 16, 31, 0.4);
+  color: #f4f1ea;
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 6px 4px;
+}
+
+.ponto-cal-cell.is-empty {
+  border: 0;
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
+.ponto-cal-cell.is-today {
+  box-shadow: inset 0 0 0 1px rgba(201, 169, 120, 0.7);
+}
+
+.ponto-cal-cell.status-presente {
+  background: rgba(184, 149, 106, 0.28);
+  border-color: rgba(184, 149, 106, 0.55);
+}
+
+.ponto-cal-cell.status-falta {
+  background: rgba(201, 120, 120, 0.24);
+  border-color: rgba(201, 120, 120, 0.55);
+}
+
+.ponto-cal-cell.status-folga {
+  background: rgba(125, 155, 196, 0.22);
+  border-color: rgba(125, 155, 196, 0.5);
+}
+
+.ponto-cal-day {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ponto-cal-mark {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--gold-light);
+}
+
+.ponto-cal-cell.status-falta .ponto-cal-mark { color: #e2a0a0; }
+.ponto-cal-cell.status-folga .ponto-cal-mark { color: #9eb6d8; }
+
+.ponto-calendar-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 14px;
+}
+
+.ponto-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.ponto-legend-item i {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+  background: rgba(125, 139, 160, 0.35);
+}
+
+.ponto-legend-item.presente i { background: rgba(184, 149, 106, 0.8); }
+.ponto-legend-item.falta i { background: rgba(201, 120, 120, 0.85); }
+.ponto-legend-item.folga i { background: rgba(125, 155, 196, 0.85); }
+
 @media (max-width: 900px) {
-  .ponto-summary {
-    grid-template-columns: 1fr 1fr;
+  .ponto-person-card {
+    flex-basis: 180px;
   }
-  .catalog-add {
-    grid-template-columns: 1fr;
+  .ponto-cal-cell {
+    min-height: 44px;
   }
 }
+
 

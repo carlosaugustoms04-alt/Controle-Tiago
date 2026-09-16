@@ -555,14 +555,9 @@
             <div class="panel-head">
               <div>
                 <h2>Ponto</h2>
-                <p>Registre presença, falta e folga dos funcionários por dia</p>
+                <p>Funcionários lado a lado — abra a presença de cada um no calendário do mês</p>
               </div>
-              <label class="ponto-date-field">
-                <span>Data</span>
-                <input type="date" id="ponto-date" />
-              </label>
             </div>
-            <div class="ponto-summary" id="ponto-summary"></div>
             <div class="ponto-list" id="ponto-list"></div>
           </article>
         </section>
@@ -736,6 +731,27 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="ghost-btn" id="cancel-funcionario-dias">Fechar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal modal-wide" id="ponto-calendar-modal">
+    <form method="dialog" id="ponto-calendar-form" onsubmit="return false;">
+      <h2 id="ponto-calendar-title">Presença</h2>
+      <p class="muted">Toque em um dia para alternar: trabalhou → falta → folga → limpar.</p>
+      <div class="ponto-cal-toolbar">
+        <button type="button" class="ghost-btn" id="ponto-cal-prev">‹</button>
+        <strong id="ponto-calendar-month">Mês</strong>
+        <button type="button" class="ghost-btn" id="ponto-cal-next">›</button>
+      </div>
+      <label class="ponto-cal-obra">
+        Obra ao marcar presença
+        <select id="ponto-calendar-obra"></select>
+      </label>
+      <div id="ponto-calendar-grid" class="ponto-calendar-grid"></div>
+      <div id="ponto-calendar-summary" class="ponto-calendar-summary"></div>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="cancel-ponto-calendar">Fechar</button>
       </div>
     </form>
   </dialog>
