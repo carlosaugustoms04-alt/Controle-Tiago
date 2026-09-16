@@ -109,6 +109,35 @@ function addDays(date, days) {
   return d;
 }
 
+function getStatePayload() {
+  return {
+    settings: state.settings,
+    transactions: state.transactions,
+    obras: state.obras,
+    funcionarios: state.funcionarios,
+    activeObraId: state.activeObraId
+  };
+}
+
+function applyStatePayload(parsed) {
+  if (!parsed || typeof parsed !== "object") return;
+  state.settings = {
+    name: "Tiago",
+    currency: "BRL",
+    loginUser: "Tiago",
+    loginPass: "Carlos27",
+    ...parsed.settings
+  };
+  state.settings.loginUser = "Tiago";
+  if (!state.settings.loginPass || state.settings.loginPass === "martins123") {
+    state.settings.loginPass = "Carlos27";
+  }
+  state.transactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+  state.obras = Array.isArray(parsed.obras) ? parsed.obras : [];
+  state.funcionarios = Array.isArray(parsed.funcionarios) ? parsed.funcionarios : [];
+  state.activeObraId = parsed.activeObraId || state.obras[0]?.id || null;
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -117,25 +146,10 @@ function load() {
       state.obras = [];
       state.funcionarios = [];
       state.activeObraId = null;
-      save();
+      saveLocal();
       return;
     }
-    const parsed = JSON.parse(raw);
-    state.settings = {
-      name: "Tiago",
-      currency: "BRL",
-      loginUser: "Tiago",
-      loginPass: "Carlos27",
-      ...parsed.settings
-    };
-    state.settings.loginUser = "Tiago";
-    if (!state.settings.loginPass || state.settings.loginPass === "martins123") {
-      state.settings.loginPass = "Carlos27";
-    }
-    state.transactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
-    state.obras = Array.isArray(parsed.obras) ? parsed.obras : [];
-    state.funcionarios = Array.isArray(parsed.funcionarios) ? parsed.funcionarios : [];
-    state.activeObraId = parsed.activeObraId || state.obras[0]?.id || null;
+    applyStatePayload(JSON.parse(raw));
   } catch {
     state.transactions = [];
     state.obras = [];
@@ -144,14 +158,82 @@ function load() {
   }
 }
 
+function saveLocal() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(getStatePayload()));
+}
+
+function getSupabaseClient() {
+  if (!window.supabase || !window.SUPABASE_CONFIG?.url || !window.SUPABASE_CONFIG?.anonKey) {
+    return null;
+  }
+  if (!getSupabaseClient._client) {
+    getSupabaseClient._client = window.supabase.createClient(
+      window.SUPABASE_CONFIG.url,
+      window.SUPABASE_CONFIG.anonKey
+    );
+  }
+  return getSupabaseClient._client;
+}
+
+function setCloudStatus(message) {
+  const el = document.getElementById("cloud-status");
+  if (el) el.textContent = message;
+}
+
+async function saveCloud() {
+  const client = getSupabaseClient();
+  if (!client) {
+    setCloudStatus("Nuvem: biblioteca não carregou");
+    return false;
+  }
+  setCloudStatus("Nuvem: salvando...");
+  const { error } = await client.from("app_state").upsert({
+    id: "main",
+    payload: getStatePayload(),
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.warn("Supabase save:", error);
+    setCloudStatus(`Nuvem: erro (${error.message}). Rode o SQL em sql/schema.sql`);
+    return false;
+  }
+  setCloudStatus(`Nuvem: salvo às ${new Date().toLocaleTimeString("pt-BR")}`);
+  return true;
+}
+
+async function loadCloud() {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  setCloudStatus("Nuvem: carregando...");
+  const { data, error } = await client
+    .from("app_state")
+    .select("payload, updated_at")
+    .eq("id", "main")
+    .maybeSingle();
+  if (error) {
+    console.warn("Supabase load:", error);
+    setCloudStatus(`Nuvem: erro (${error.message}). Rode o SQL em sql/schema.sql`);
+    return false;
+  }
+  if (!data?.payload) {
+    setCloudStatus("Nuvem: vazia — enviando dados locais...");
+    await saveCloud();
+    return false;
+  }
+  applyStatePayload(data.payload);
+  saveLocal();
+  const when = data.updated_at ? new Date(data.updated_at).toLocaleString("pt-BR") : "";
+  setCloudStatus(when ? `Nuvem: sincronizado (${when})` : "Nuvem: sincronizado");
+  return true;
+}
+
+let cloudSaveTimer = null;
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    settings: state.settings,
-    transactions: state.transactions,
-    obras: state.obras,
-    funcionarios: state.funcionarios,
-    activeObraId: state.activeObraId
-  }));
+  saveLocal();
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    saveCloud();
+  }, 600);
 }
 
 function currency(value) {
@@ -1902,6 +1984,11 @@ function bind() {
     showToast("Configurações salvas");
   });
 
+  document.getElementById("sync-cloud-btn")?.addEventListener("click", async () => {
+    const ok = await saveCloud();
+    showToast(ok ? "Dados salvos na nuvem" : "Falha ao salvar na nuvem");
+  });
+
   document.getElementById("logout-btn")?.addEventListener("click", () => {
     lockApp();
     showToast("Sessão encerrada");
@@ -1925,11 +2012,22 @@ function bind() {
 
 load();
 bind();
-if (sessionStorage.getItem("financas-auth") === "1") {
-  unlockApp();
-} else {
-  lockApp();
+
+async function boot() {
+  try {
+    await loadCloud();
+  } catch (err) {
+    console.warn(err);
+    setCloudStatus("Nuvem: indisponível no momento");
+  }
+  if (sessionStorage.getItem("financas-auth") === "1") {
+    unlockApp();
+  } else {
+    lockApp();
+  }
 }
+
+boot();
 
 function lockApp() {
   state.authenticated = false;

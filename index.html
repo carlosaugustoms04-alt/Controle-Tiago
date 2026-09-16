@@ -455,9 +455,11 @@
             </label>
             <div class="settings-actions">
               <button class="primary-btn" id="save-settings">Salvar</button>
+              <button class="ghost-btn" id="sync-cloud-btn" type="button">Salvar na nuvem</button>
               <button class="ghost-btn" id="logout-btn" type="button">Sair</button>
               <button class="danger-btn" id="reset-data">Zerar todos os lançamentos</button>
             </div>
+            <p class="muted" id="cloud-status">Nuvem: verificando...</p>
           </article>
         </section>
 
@@ -681,6 +683,8 @@
     </form>
   </dialog>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
