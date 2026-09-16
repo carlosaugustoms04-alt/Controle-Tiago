@@ -10,7 +10,27 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <div class="app-shell">
+  <div class="login-screen" id="login-screen">
+    <form class="login-card" id="login-form">
+      <div class="login-brand">
+        <img src="Logo-symbol.png" alt="Martins Imóveis" />
+      </div>
+      <h1>Martins Imóveis</h1>
+      <p class="login-subtitle">Digite usuário e senha para entrar</p>
+      <label>
+        Usuário
+        <input type="text" id="login-user" autocomplete="username" required maxlength="40" />
+      </label>
+      <label>
+        Senha
+        <input type="password" id="login-pass" autocomplete="current-password" required maxlength="40" />
+      </label>
+      <p class="login-error hidden" id="login-error">Usuário ou senha incorretos.</p>
+      <button type="submit" class="primary-btn login-submit">Entrar</button>
+    </form>
+  </div>
+
+  <div class="app-shell hidden" id="app-shell">
     <div class="sidebar-overlay" id="sidebar-overlay" hidden></div>
     <div class="app">
       <aside class="sidebar" id="sidebar">
@@ -418,6 +438,14 @@
               <input type="text" id="setting-name" maxlength="40" />
             </label>
             <label>
+              Usuário de acesso
+              <input type="text" id="setting-login-user" maxlength="40" />
+            </label>
+            <label>
+              Senha de acesso
+              <input type="password" id="setting-login-pass" maxlength="40" />
+            </label>
+            <label>
               Moeda
               <select id="setting-currency">
                 <option value="BRL">Real (BRL)</option>
@@ -427,6 +455,7 @@
             </label>
             <div class="settings-actions">
               <button class="primary-btn" id="save-settings">Salvar</button>
+              <button class="ghost-btn" id="logout-btn" type="button">Sair</button>
               <button class="danger-btn" id="reset-data">Zerar todos os lançamentos</button>
             </div>
           </article>

@@ -79,14 +79,20 @@ const FUNCIONARIO_CARGOS = [
 ];
 
 const state = {
-  settings: { name: "Tiago", currency: "BRL" },
+  settings: {
+    name: "Tiago",
+    currency: "BRL",
+    loginUser: "Tiago",
+    loginPass: "Carlos27"
+  },
   transactions: [],
   obras: [],
   funcionarios: [],
   activeObraId: null,
   obraEtapaFilter: "all",
   funcionarioRoleFilter: "all",
-  trendDays: 30
+  trendDays: 30,
+  authenticated: false
 };
 
 function uid() {
@@ -115,7 +121,17 @@ function load() {
       return;
     }
     const parsed = JSON.parse(raw);
-    state.settings = { ...state.settings, ...parsed.settings };
+    state.settings = {
+      name: "Tiago",
+      currency: "BRL",
+      loginUser: "Tiago",
+      loginPass: "Carlos27",
+      ...parsed.settings
+    };
+    state.settings.loginUser = "Tiago";
+    if (!state.settings.loginPass || state.settings.loginPass === "martins123") {
+      state.settings.loginPass = "Carlos27";
+    }
     state.transactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
     state.obras = Array.isArray(parsed.obras) ? parsed.obras : [];
     state.funcionarios = Array.isArray(parsed.funcionarios) ? parsed.funcionarios : [];
@@ -332,6 +348,10 @@ function renderHeader() {
   document.getElementById("insight-badge").textContent = String(state.transactions.length ? 3 : 0);
   document.getElementById("setting-name").value = state.settings.name;
   document.getElementById("setting-currency").value = state.settings.currency;
+  const loginUser = document.getElementById("setting-login-user");
+  const loginPass = document.getElementById("setting-login-pass");
+  if (loginUser) loginUser.value = state.settings.loginUser || "Tiago";
+  if (loginPass) loginPass.value = state.settings.loginPass || "Carlos27";
 }
 
 function renderKpis() {
@@ -1875,9 +1895,21 @@ function bind() {
   document.getElementById("save-settings").addEventListener("click", () => {
     state.settings.name = document.getElementById("setting-name").value.trim() || "Tiago";
     state.settings.currency = document.getElementById("setting-currency").value;
+    state.settings.loginUser = document.getElementById("setting-login-user").value.trim() || "Tiago";
+    state.settings.loginPass = document.getElementById("setting-login-pass").value || "Carlos27";
     save();
     refresh();
     showToast("Configurações salvas");
+  });
+
+  document.getElementById("logout-btn")?.addEventListener("click", () => {
+    lockApp();
+    showToast("Sessão encerrada");
+  });
+
+  document.getElementById("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    tryLogin();
   });
 
   document.getElementById("reset-data").addEventListener("click", () => {
@@ -1893,4 +1925,48 @@ function bind() {
 
 load();
 bind();
-refresh();
+if (sessionStorage.getItem("financas-auth") === "1") {
+  unlockApp();
+} else {
+  lockApp();
+}
+
+function lockApp() {
+  state.authenticated = false;
+  sessionStorage.removeItem("financas-auth");
+  document.getElementById("app-shell")?.classList.add("hidden");
+  const screen = document.getElementById("login-screen");
+  screen?.classList.remove("hidden");
+  const error = document.getElementById("login-error");
+  error?.classList.add("hidden");
+  const user = document.getElementById("login-user");
+  const pass = document.getElementById("login-pass");
+  if (user) user.value = "";
+  if (pass) pass.value = "";
+  setTimeout(() => user?.focus(), 50);
+}
+
+function unlockApp() {
+  state.authenticated = true;
+  sessionStorage.setItem("financas-auth", "1");
+  document.getElementById("login-screen")?.classList.add("hidden");
+  document.getElementById("app-shell")?.classList.remove("hidden");
+  refresh();
+}
+
+function tryLogin() {
+  const user = (document.getElementById("login-user")?.value || "").trim();
+  const pass = document.getElementById("login-pass")?.value || "";
+  const expectedUser = state.settings.loginUser || "Tiago";
+  const expectedPass = state.settings.loginPass || "Carlos27";
+  const error = document.getElementById("login-error");
+  if (user === expectedUser && pass === expectedPass) {
+    error?.classList.add("hidden");
+    unlockApp();
+    showToast(`Bem-vindo, ${state.settings.name}`);
+    return;
+  }
+  error?.classList.remove("hidden");
+  document.getElementById("login-pass").value = "";
+  document.getElementById("login-pass")?.focus();
+}
